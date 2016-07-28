@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 
 data class Context(
-        val api: PokemonGo,
+        var api: PokemonGo,
         val profile: PlayerProfile,
         val lat: AtomicDouble,
         val lng: AtomicDouble,
@@ -25,5 +25,11 @@ data class Context(
         val pokemonStats: Pair<AtomicInteger, AtomicInteger>,
         val itemStats: Pair<AtomicInteger, AtomicInteger>,
 
-        var walking: AtomicBoolean = AtomicBoolean(false)
+        val blacklistedEncounters: MutableSet<Long>,
+
+        var walking: AtomicBoolean = AtomicBoolean(false),
+
+        // sphinxid
+		var releasing: AtomicBoolean = AtomicBoolean(false),
+		var stopAtPoint: AtomicBoolean = AtomicBoolean(false)
 )

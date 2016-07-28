@@ -13,9 +13,29 @@ longitude=
 # desired chance to catch Pokemon with 1 throw
 desired_catch_probability=0.8
 
+# number of nearest unused pokestops to randomly select
+# the next pokestop from (1/infinite)
+random_next_pokestop_selection=2
+
 ## Walking
 # Meters per second
-speed=2.778
+speed=0.7918
+
+# allow leaving the starting area
+allow_leave_start_area=false
+
+# Max distance from starting point the bot should ever go in meters
+# (-1: only limited by the initial pokestops (~3*3km); with allow_leave_start_area=true unlimited)
+spawn_radius=-1
+
+# Should the bot loot the pokestops (true/false)
+loot_pokestop=true
+ 
+# Should the bot catch pokemons (true/false)
+catch_pokemon=true
+ 
+# Shout the bot auto fill incubators with eggs (true/false)
+auto_fill_incubator=true
 
 ## Items drop
 # should the bot EVER drop items (true/false)
@@ -42,6 +62,9 @@ display_pokestop_rewards=true
 # should the bot display rewards when catching pokemon (true/false)
 display_pokemon_catch_rewards=true
 
+# Display Keepalive Coordinates
+display_keepalive=true
+
 # should the bot display information of where it's walking to (true/false)
 # this will show the name of the pokestop that it's walking to and
 # replace on the loot log the pokestop id for its name
@@ -51,7 +74,7 @@ display_pokestop_name=false
 
 ## Pokemon Transfer
 # should the bot auto transfer duplicate pokemon
-autotransfer=false
+autotransfer=true
 
 # minimum amount of pokemon type to keep
 keep_pokemon_amount=1
@@ -65,9 +88,6 @@ transfer_iv_threshold=80
 
 # Minimum CP to keep a pokemon (to ignore CP: use -1)
 transfer_cp_threshold=400
-
-# Only walk (hatch eggs, don't collect pokemon or pokestops)
-walk_only=false
 
 # list of pokemon you don't want to transfer regardless of CP
 # the names must be divided by a ","

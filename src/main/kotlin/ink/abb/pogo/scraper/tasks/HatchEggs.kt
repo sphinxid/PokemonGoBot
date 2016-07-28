@@ -38,11 +38,11 @@ class HatchEggs : Task {
                 .filter { !it.isIncubate }
                 .sortedByDescending { it.eggKmWalkedTarget }
         if (freeIncubators.isNotEmpty() && eggs.isNotEmpty() && settings.shouldAutoFillIncubators) {
-            val result = eggs.first().incubate(freeIncubators.first())
-            if (result == UseItemEggIncubatorResponseOuterClass.UseItemEggIncubatorResponse.Result.SUCCESS) {
+            val result2 = eggs.first().incubate(freeIncubators.first())
+            if (result2 == UseItemEggIncubatorResponseOuterClass.UseItemEggIncubatorResponse.Result.SUCCESS) {
                 Log.cyan("Put egg of ${eggs.first().eggKmWalkedTarget}km in unused incubator")
             } else {
-                Log.red("Failed to put egg in incubator; error: $result")
+                Log.red("Failed to put egg in incubator; error: $result2")
             }
         }
     }

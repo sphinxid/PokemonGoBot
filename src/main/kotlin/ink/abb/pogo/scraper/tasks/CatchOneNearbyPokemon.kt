@@ -21,6 +21,7 @@ import ink.abb.pogo.scraper.util.pokemon.getStatsFormatted
 import ink.abb.pogo.scraper.util.pokemon.shouldTransfer
 
 class CatchOneNearbyPokemon : Task {
+    
     override fun run(bot: Bot, ctx: Context, settings: Settings) {
         val pokemon = ctx.api.map.catchablePokemon.filter { !ctx.blacklistedEncounters.contains(it.encounterId) }
 
@@ -44,8 +45,9 @@ class CatchOneNearbyPokemon : Task {
             if (encounterResult.wasSuccessful()) {
                 Log.green("Encountered pokemon ${catchablePokemon.pokemonId} " +
                         "with CP ${encounterResult.wildPokemon.pokemonData.cp} and IV ${encounterResult.wildPokemon.pokemonData.getIvPercentage()}%")
-                val shouldRelease = encounterResult.wildPokemon.pokemonData.shouldTransfer(settings).first
+                val (shouldRelease, reason) = encounterResult.wildPokemon.pokemonData.shouldTransfer(settings)
                 val desiredCatchProbability = if (shouldRelease) {
+                    Log.yellow("Using desired_catch_probability_unwanted because $reason")
                     settings.desiredCatchProbabilityUnwanted
                 } else {
                     settings.desiredCatchProbability
@@ -66,7 +68,8 @@ class CatchOneNearbyPokemon : Task {
                 if (result == null) {
                     // prevent trying it in the next iteration
                     ctx.blacklistedEncounters.add(catchablePokemon.encounterId)
-                    Log.red("No Pokeballs in your inventory; blacklisting Pokemon")
+
+                    Log.red("No Pokeballs in your inventory || Blacklisted Pokemon.")
                     return
                 }
 
@@ -83,6 +86,11 @@ class CatchOneNearbyPokemon : Task {
 
                 } else
                     Log.red("Capture of ${catchablePokemon.pokemonId} failed with status : ${result.status}")
+
+                    if (result.status == CatchPokemonResponse.CatchStatus.CATCH_ERROR) {
+                        Log.red("Blacklisting pokemon to prevent infinite loop")
+                        ctx.blacklistedEncounters.add(catchablePokemon.encounterId)
+                    }                    
             } else {
                 Log.red("Encounter failed with result: ${encounterResult.getStatus()}")
             }

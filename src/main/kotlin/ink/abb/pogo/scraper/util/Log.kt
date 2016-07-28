@@ -14,15 +14,15 @@ import java.util.*
 class Log {
 
     companion object {
-
+    
         private val black_ = "\u001B[30m"
-        private val red_ = "\u001B[31;1m"
         private val green_ = "\u001B[32;1m"
         private val yellow_ = "\u001B[33;1m"
         private val blue_ = "\u001B[34;1m"
         private val magenta_ = "\u001B[35;1m"
         private val cyan_ = "\u001B[36;1m"
-        private val white_ = "\u001B[1m"
+        private val white_ = "\u001B[1m"        
+        private val red_ = "\u001B[31m"
         private val reset = "\u001B[0m"
 
         var format = SimpleDateFormat("dd MMM HH:mm:ss")
@@ -71,6 +71,5 @@ class Log {
         fun white(text: String = "") {
             output(text, white_)
         }
-
     }
 }

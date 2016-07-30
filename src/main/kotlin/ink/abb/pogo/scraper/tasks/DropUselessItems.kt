@@ -14,6 +14,7 @@ import ink.abb.pogo.scraper.Context
 import ink.abb.pogo.scraper.Settings
 import ink.abb.pogo.scraper.Task
 import ink.abb.pogo.scraper.util.Log
+import ink.abb.pogo.scraper.util.Helper
 
 class DropUselessItems : Task {
     override fun run(bot: Bot, ctx: Context, settings: Settings) {
@@ -28,7 +29,7 @@ class DropUselessItems : Task {
                     Log.yellow("Dropped ${count}x ${it.key.name}")
                     ctx.server.sendProfile()
 
-                    sleeptime = Helper.getRandomNumber(3,10)
+                    var sleeptime = Helper.getRandomNumber(3,10)
                     Helper.sleepSecond(sleeptime)                    
 
                 } else {

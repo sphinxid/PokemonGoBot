@@ -27,6 +27,10 @@ class DropUselessItems : Task {
                     ctx.itemStats.second.getAndAdd(count)
                     Log.yellow("Dropped ${count}x ${it.key.name}")
                     ctx.server.sendProfile()
+
+                    sleeptime = Helper.getRandomNumber(3,10)
+                    Helper.sleepSecond(sleeptime)                    
+
                 } else {
                     Log.red("Failed to drop ${count}x ${it.key.name}: $result")
                 }

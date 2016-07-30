@@ -132,6 +132,11 @@ class Bot(val api: PokemonGo, val settings: Settings) {
                 synctask(profile)
                 synctask(hatchEggs)
 
+                // drop items
+                if (settings.shouldDropItems) {
+                    synctask(drop)
+                }  
+
                 if (settings.export.length > 0)
                     task(export)
 
@@ -152,12 +157,7 @@ class Bot(val api: PokemonGo, val settings: Settings) {
                 // transfer pokemon
                 if (settings.shouldAutoTransfer) {                            
                     synctask(release)
-                }
-
-                // drop items
-                if (settings.shouldDropItems) {
-                    synctask(drop)
-                }                                
+                }                              
 
                 Helper.sleepSecond(Helper.getRandomNumber(3,10))
             }

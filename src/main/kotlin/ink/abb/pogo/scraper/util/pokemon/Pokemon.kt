@@ -67,10 +67,17 @@ fun Pokemon.shouldTransfer(settings: Settings, pokemonCounts: MutableMap<String,
             reason = "CP < $minCP and IV < $minIVPercentage%"
             shouldRelease = ivTooLow && cpTooLow
         }
+
         // still shouldn't release? Check if we have too many
         if (!shouldRelease && isTooMany) {
             shouldRelease = true
             reason = "Too many"
+        }
+
+        // IV >= minIVPercentage but CP < 100, we should release also!
+        if (!shouldRelease) {
+            shouldRelease = true
+            reason = "CP < 100 and IV > $minIVPercentage%"
         }
     }
     return Pair(shouldRelease, reason);

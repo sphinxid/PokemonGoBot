@@ -145,7 +145,7 @@ class Bot(val api: PokemonGo, val settings: Settings) {
                 if (settings.export.length > 0)
                     task(export)
 
-                Helper.sleepSecond(Helper.getRandomNumber(50,300))
+                Helper.sleepSecond(Helper.getRandomNumber(120,300))
             }
         })
 

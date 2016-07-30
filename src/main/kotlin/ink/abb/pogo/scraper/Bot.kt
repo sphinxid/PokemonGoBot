@@ -17,22 +17,19 @@ import ink.abb.pogo.scraper.gui.WebServer
 import com.pokegoapi.api.pokemon.Pokemon
 import ink.abb.pogo.scraper.tasks.*
 import ink.abb.pogo.scraper.util.Log
+import ink.abb.pogo.scraper.util.Helper
 import ink.abb.pogo.scraper.util.inventory.size
 import ink.abb.pogo.scraper.util.pokemon.getIv
 import ink.abb.pogo.scraper.util.pokemon.getIvPercentage
 import ink.abb.pogo.scraper.util.pokemon.getStatsFormatted
 import java.util.*
 import java.util.concurrent.CountDownLatch
-import java.util.concurrent.Phaser
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.concurrent.thread
 
 class Bot(val api: PokemonGo, val settings: Settings) {
-
-    private var runningLatch = CountDownLatch(0)
-    lateinit private var phaser: Phaser
 
     var ctx = Context(
             api,
@@ -47,8 +44,7 @@ class Bot(val api: PokemonGo, val settings: Settings) {
     )
 
     @Synchronized
-    fun start() {
-        if (isRunning()) return
+    fun start() {        
 
         Log.normal()
         Log.normal("Name: ${ctx.profile.username}")
@@ -96,27 +92,10 @@ class Bot(val api: PokemonGo, val settings: Settings) {
                 Thread.sleep(sleepTimeout * 1000)
             }
         } while (reply == null || reply.pokestops.size == 0)
+
+        TimeUnit.SECONDS.sleep(5)
         val process = ProcessPokestops(reply.pokestops)
 
-        runningLatch = CountDownLatch(1)
-        phaser = Phaser(1)
-
-        runLoop(TimeUnit.SECONDS.toMillis(settings.profileUpdateTimer), "ProfileLoop") {
-            task(profile)
-            task(hatchEggs)
-        }
-        
-        runLoop(TimeUnit.SECONDS.toMillis(5), "BotLoop") {
-            task(keepalive)
-            if (settings.shouldCatchPokemons)
-                task(catch)
-            if (settings.shouldDropItems)
-                task(drop)
-            if (settings.shouldAutoTransfer)
-                task(release)
-
-            task(process)
-        }
 
         Log.setContext(ctx)
 
@@ -125,56 +104,118 @@ class Bot(val api: PokemonGo, val settings: Settings) {
             WebServer().start(settings.guiPort, settings.guiPortSocket)
             ctx.server.start(ctx, settings.guiPortSocket)
         }
+
+       // BotLoop 1
+        thread(true, false, null, "BotLoop1", 1, block = {
+            var threadRun = true
+
+            while(threadRun) {
+
+                // keepalive
+                task(keepalive)
+
+                // process
+                task(process)
+
+                TimeUnit.SECONDS.sleep(Helper.getRandomNumber(4,7).toLong())
+            }
+        })
+
+        // BotLoop 2
+        thread(true, false, null, "BotLoop2", 1, block = {
+            var threadRun = true
+
+            while(threadRun) {
+
+                synctask(profile)
+                synctask(hatchEggs)
+
+                TimeUnit.SECONDS.sleep(Helper.getRandomNumber(50,300).toLong())
+            }
+        })
+
+        // BotLoop 3
+        thread(true, false, null, "BotLoop3", 1, block = {
+            var threadRun = true
+
+            while(threadRun) {
+                // catch pokemon
+                if (settings.shouldCatchPokemons) {
+                    synctask(catch)
+                }
+
+                // transfer pokemon
+                if (settings.shouldAutoTransfer) {                            
+                    synctask(release)
+                }
+
+                // drop items
+                if (settings.shouldDropItems) {
+                    synctask(drop)
+                }                                
+
+                TimeUnit.SECONDS.sleep(Helper.getRandomNumber(3,10).toLong())
+            }
+
+        })
+
     }
 
-    fun runLoop(timeout: Long, name: String, block: (cancel: () -> Unit) -> Unit) {
-        phaser.register()
-        thread(name = name) {
-            try {
-                var cancelled = false
-                while (!cancelled && isRunning()) {
-                    val start = api.currentTimeMillis()
 
-                    try {
-                        block({ cancelled = true })
-                    } catch (t: Throwable) {
-                        Log.red("Error running loop $name!")
-                        t.printStackTrace()
-                    }
+    @Suppress("UNUSED_VARIABLE")
+    fun synctask(task: Task) {
+        synchronized(ctx) {
+            synchronized(settings) {
 
-                    if(cancelled) continue
+                try {            
+                    task.run(this, ctx, settings)
 
-                    val sleep = timeout - (api.currentTimeMillis() - start)
-
-                    if (sleep > 0) {
-                        try {
-                            runningLatch.await(sleep, TimeUnit.MILLISECONDS)
-                        } catch (ignore: InterruptedException) {
-                        }
-                    }
                 }
-            } finally {
-                phaser.arriveAndDeregister()
+                /* 
+                catch (lfe: LoginFailedException) {
+
+                    lfe.printStackTrace()
+
+                    val (api2, auth) = login()
+
+                    synchronized(ctx) {
+                        ctx.api = api2
+                    }
+                } */ 
+
+                catch (e: Exception) {
+                    e.printStackTrace()
+                }
             }
         }
     }
 
+    @Suppress("UNUSED_VARIABLE")
+    fun task(task: Task) {
+        try {
+            task.run(this, ctx, settings)
+        } 
+        /*
+        catch (lfe: LoginFailedException) {
+
+            lfe.printStackTrace()
+
+            val (api2, auth) = login()
+
+            synchronized(ctx) {
+                ctx.api = api2
+            }
+        } */
+        catch (e: Exception) {
+            e.printStackTrace()
+        }       
+    }
+
     @Synchronized
     fun stop() {
-        if (!isRunning()) return
+        // do something
 
         Log.red("Stopping bot loops...")
-        runningLatch.countDown()
-        phaser.arriveAndAwaitAdvance()
         Log.red("All bot loops stopped.")
-    }
-
-    fun isRunning(): Boolean {
-        return runningLatch.count > 0
-    }
-
-    fun task(task: Task) {
-        Thread.sleep(300)
-        task.run(this, ctx, settings)
     }
 }

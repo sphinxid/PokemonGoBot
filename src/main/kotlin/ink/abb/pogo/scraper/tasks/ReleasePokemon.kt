@@ -15,12 +15,20 @@ import ink.abb.pogo.scraper.Context
 import ink.abb.pogo.scraper.Settings
 import ink.abb.pogo.scraper.Task
 import ink.abb.pogo.scraper.util.Log
+import ink.abb.pogo.scraper.util.Helper
 import ink.abb.pogo.scraper.util.pokemon.getIv
 import ink.abb.pogo.scraper.util.pokemon.getIvPercentage
 import ink.abb.pogo.scraper.util.pokemon.shouldTransfer
+import kotlin.concurrent.thread
 
 class ReleasePokemon : Task {
     override fun run(bot: Bot, ctx: Context, settings: Settings) {
+
+        // if already in the progress of transfering a pokemon, then we continue to do something else.
+        if (!ctx.releasing.compareAndSet(false, true)) {
+            return
+        }
+
         val groupedPokemon = ctx.api.inventories.pokebank.pokemons.groupBy { it.pokemonId }
         val sortByIV = settings.sortByIV
         val pokemonCounts = hashMapOf<String, Int>()
@@ -40,21 +48,35 @@ class ReleasePokemon : Task {
                     if (settings.obligatoryTransfer.contains(pokemon.pokemonId) || index >= settings.keepPokemonAmount) {
                         val (shouldRelease, reason) = pokemon.shouldTransfer(settings, pokemonCounts)
 
-                        if (shouldRelease) {
+                        if (shouldRelease) {                        
+                            
+                            ctx.releasing.getAndSet(true)
+                            
                             Log.yellow("Going to transfer ${pokemon.pokemonId.name} with " +
                                     "CP ${pokemon.cp} and IV $ivPercentage%; reason: $reason")
-                            val result = pokemon.transferPokemon()
-                            if (result == Result.SUCCESS) {
-                                ctx.pokemonStats.second.andIncrement
-                                ctx.server.releasePokemon(pokemon.id)
-                                ctx.server.sendProfile()
-                            } else {
-                                Log.red("Failed to transfer ${pokemon.pokemonId.name}: ${result.name}")
-                            }
+
+                            // we should wait N seconds before transfering a pokemon.
+
+                                val timeStop = Helper.getRandomNumber(20,60)
+                                Log.magenta("We are going to wait for $timeStop seconds before transfering ${pokemon.pokemonId.name} (CP ${pokemon.cp} and IV $ivPercentage%)")
+                                Helper.sleepSecond(timeStop)
+
+                                val result = pokemon.transferPokemon()
+                                if (result == Result.SUCCESS) {
+                                    ctx.pokemonStats.second.andIncrement
+                                    ctx.server.releasePokemon(pokemon.id)
+                                    ctx.server.sendProfile()
+                                } else {
+                                    Log.red("Failed to transfer ${pokemon.pokemonId.name}: ${result.name}")
+                                }
+
+                                ctx.releasing.getAndSet(false)
                         }
                     }
                 }
             }
         }
+
+        ctx.releasing.getAndSet(false)
     }
 }

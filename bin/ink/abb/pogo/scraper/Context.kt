@@ -11,13 +11,12 @@ package ink.abb.pogo.scraper
 import com.google.common.util.concurrent.AtomicDouble
 import com.pokegoapi.api.PokemonGo
 import com.pokegoapi.api.player.PlayerProfile
-import ink.abb.pogo.scraper.gui.SocketServer
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 
 data class Context(
-        var api: PokemonGo,
+        val api: PokemonGo,
         val profile: PlayerProfile,
         val lat: AtomicDouble,
         val lng: AtomicDouble,
@@ -26,12 +25,5 @@ data class Context(
         val pokemonStats: Pair<AtomicInteger, AtomicInteger>,
         val itemStats: Pair<AtomicInteger, AtomicInteger>,
 
-        val blacklistedEncounters: MutableSet<Long>,
-        val server: SocketServer,
-
-        var walking: AtomicBoolean = AtomicBoolean(false),
-
-        // sphinxid
-		var releasing: AtomicBoolean = AtomicBoolean(false),
-		var stopAtPoint: AtomicBoolean = AtomicBoolean(false)
+        var walking: AtomicBoolean = AtomicBoolean(false)
 )

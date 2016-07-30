@@ -27,7 +27,7 @@ class LootOneNearbyPokestop(val sortedPokestops: List<Pokestop>, val lootTimeout
 
     override fun run(bot: Bot, ctx: Context, settings: Settings) {
         val nearbyPokestops = sortedPokestops.filter {
-            it.canLoot(lootTimeouts = lootTimeouts, api = ctx.api)
+            it.canLoot(lootTimeouts = lootTimeouts)
         }
 
         if (nearbyPokestops.isNotEmpty()) {
@@ -42,15 +42,8 @@ class LootOneNearbyPokestop(val sortedPokestops: List<Pokestop>, val lootTimeout
             if (result?.itemsAwarded != null) {
                 ctx.itemStats.first.getAndAdd(result.itemsAwarded.size)
             }
-
-            if(result.experience > 0){
-                ctx.server.sendProfile()
-            }
-
             when (result.result) {
                 Result.SUCCESS -> {
-                    ctx.server.sendPokestop(closest)
-                    ctx.server.sendProfile()
                     var message = "Looted pokestop $pokestopID; +${result.experience} XP"
                     if (settings.shouldDisplayPokestopSpinRewards)
                         message += ": ${result.itemsAwarded.groupBy { it.itemId.name }.map { "${it.value.size}x${it.key}" }}"
@@ -59,8 +52,6 @@ class LootOneNearbyPokestop(val sortedPokestops: List<Pokestop>, val lootTimeout
                     //checkResult(result)
                 }
                 Result.INVENTORY_FULL -> {
-                    ctx.server.sendPokestop(closest)
-                    ctx.server.sendProfile()
                     var message = "Looted pokestop $pokestopID; +${result.experience} XP, but inventory is full"
                     if (settings.shouldDisplayPokestopSpinRewards)
                         message += ": ${result.itemsAwarded.groupBy { it.itemId.name }.map { "${it.value.size}x${it.key}" }}"
@@ -76,13 +67,8 @@ class LootOneNearbyPokestop(val sortedPokestops: List<Pokestop>, val lootTimeout
                 }
                 Result.IN_COOLDOWN_PERIOD -> {
                     val cooldownPeriod = 5
-                    lootTimeouts.put(closest.id, ctx.api.currentTimeMillis() + cooldownPeriod * 60 * 1000)
+                    lootTimeouts.put(closest.id, System.currentTimeMillis() + cooldownPeriod * 60 * 1000)
                     Log.red("Pokestop still in cooldown mode; blacklisting for $cooldownPeriod minutes")
-                }
-                Result.NO_RESULT_SET -> {
-                    val cooldownPeriod = 5
-                    lootTimeouts.put(closest.id, ctx.api.currentTimeMillis() + cooldownPeriod * 60 * 1000)
-                    Log.red("Server refuses to loot this Pokestop (usually temporary issue); blacklisting for $cooldownPeriod minutes")
                 }
                 else -> Log.yellow(result.result.toString())
             }

@@ -21,21 +21,11 @@ import java.util.*
  *
  * @author Andrew Potter (apottere)
  */
-class ProcessPokestops(var pokestops: MutableCollection<Pokestop>) : Task {
+class ProcessPokestops(val pokestops: MutableCollection<Pokestop>) : Task {
 
     private val lootTimeouts = HashMap<String, Long>()
 
     override fun run(bot: Bot, ctx: Context, settings: Settings) {
-        if (settings.allowLeaveStartArea) {
-            try {
-                val newStops = ctx.api.map.mapObjects.pokestops
-                if (newStops.size > 0) {
-                    pokestops = newStops
-                }
-            } catch (e: Exception) {
-                // ignored failed request
-            }
-        }
         val sortedPokestops = pokestops.sortedWith(Comparator { a, b ->
             val locationA = S2LatLng.fromDegrees(a.latitude, a.longitude)
             val locationB = S2LatLng.fromDegrees(b.latitude, b.longitude)
@@ -45,11 +35,11 @@ class ProcessPokestops(var pokestops: MutableCollection<Pokestop>) : Task {
             distanceA.compareTo(distanceB)
         })
 
-        if (settings.shouldLootPokestop) {
+        if (!settings.walkOnly) {
             val loot = LootOneNearbyPokestop(sortedPokestops, lootTimeouts)
             bot.task(loot)
         }
-        val walk = Walk(sortedPokestops, lootTimeouts)
+        val walk = WalkToUnusedPokestop(sortedPokestops, lootTimeouts)
 
         bot.task(walk)
     }

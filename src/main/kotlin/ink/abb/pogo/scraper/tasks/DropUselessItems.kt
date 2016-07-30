@@ -14,6 +14,7 @@ import ink.abb.pogo.scraper.Context
 import ink.abb.pogo.scraper.Settings
 import ink.abb.pogo.scraper.Task
 import ink.abb.pogo.scraper.util.Log
+import ink.abb.pogo.scraper.util.Helper
 
 class DropUselessItems : Task {
     override fun run(bot: Bot, ctx: Context, settings: Settings) {
@@ -26,7 +27,14 @@ class DropUselessItems : Task {
                 if (result == RecycleInventoryItemResponseOuterClass.RecycleInventoryItemResponse.Result.SUCCESS) {
                     ctx.itemStats.second.getAndAdd(count)
                     Log.yellow("Dropped ${count}x ${it.key.name}")
-                    ctx.server.sendProfile()
+
+                    if (settings.guiPortSocket > 0) {
+                        ctx.server.sendProfile()
+                    }
+
+                    var sleeptime = Helper.getRandomNumber(3,10)
+                    Helper.sleepSecond(sleeptime)                    
+
                 } else {
                     Log.red("Failed to drop ${count}x ${it.key.name}: $result")
                 }

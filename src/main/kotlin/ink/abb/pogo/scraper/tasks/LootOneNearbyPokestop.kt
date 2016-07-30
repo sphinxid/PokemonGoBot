@@ -43,14 +43,18 @@ class LootOneNearbyPokestop(val sortedPokestops: List<Pokestop>, val lootTimeout
                 ctx.itemStats.first.getAndAdd(result.itemsAwarded.size)
             }
 
-            if(result.experience > 0){
+            if(result.experience > 0 && settings.guiPortSocket > 0){
                 ctx.server.sendProfile()
             }
 
             when (result.result) {
                 Result.SUCCESS -> {
-                    ctx.server.sendPokestop(closest)
-                    ctx.server.sendProfile()
+
+                    if (settings.guiPortSocket > 0) {
+                        ctx.server.sendPokestop(closest)
+                        ctx.server.sendProfile()
+                    }
+
                     var message = "Looted pokestop $pokestopID; +${result.experience} XP"
                     if (settings.shouldDisplayPokestopSpinRewards)
                         message += ": ${result.itemsAwarded.groupBy { it.itemId.name }.map { "${it.value.size}x${it.key}" }}"
@@ -59,8 +63,11 @@ class LootOneNearbyPokestop(val sortedPokestops: List<Pokestop>, val lootTimeout
                     //checkResult(result)
                 }
                 Result.INVENTORY_FULL -> {
-                    ctx.server.sendPokestop(closest)
-                    ctx.server.sendProfile()
+                    if (settings.guiPortSocket > 0) {
+                        ctx.server.sendPokestop(closest)
+                        ctx.server.sendProfile()
+                    }
+                    
                     var message = "Looted pokestop $pokestopID; +${result.experience} XP, but inventory is full"
                     if (settings.shouldDisplayPokestopSpinRewards)
                         message += ": ${result.itemsAwarded.groupBy { it.itemId.name }.map { "${it.value.size}x${it.key}" }}"

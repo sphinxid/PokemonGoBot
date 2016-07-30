@@ -9,21 +9,23 @@
 package ink.abb.pogo.scraper.tasks
 
 import POGOProtos.Networking.Responses.CatchPokemonResponseOuterClass.CatchPokemonResponse
+import POGOProtos.Networking.Responses.EncounterResponseOuterClass
+import POGOProtos.Networking.Responses.EncounterResponseOuterClass.EncounterResponse.Status
 import ink.abb.pogo.scraper.Bot
 import ink.abb.pogo.scraper.Context
 import ink.abb.pogo.scraper.Settings
 import ink.abb.pogo.scraper.Task
 import ink.abb.pogo.scraper.util.Log
 import ink.abb.pogo.scraper.util.inventory.hasPokeballs
+import ink.abb.pogo.scraper.util.map.getCatchablePokemon
 import ink.abb.pogo.scraper.util.pokemon.catch
 import ink.abb.pogo.scraper.util.pokemon.getIvPercentage
 import ink.abb.pogo.scraper.util.pokemon.getStatsFormatted
 import ink.abb.pogo.scraper.util.pokemon.shouldTransfer
 
 class CatchOneNearbyPokemon : Task {
-    
     override fun run(bot: Bot, ctx: Context, settings: Settings) {
-        val pokemon = ctx.api.map.catchablePokemon.filter { !ctx.blacklistedEncounters.contains(it.encounterId) }
+        val pokemon = ctx.api.map.getCatchablePokemon(ctx.blacklistedEncounters)
 
         val hasPokeballs = ctx.api.inventories.itemBag.hasPokeballs()
 
@@ -33,7 +35,7 @@ class CatchOneNearbyPokemon : Task {
 
         if (pokemon.isNotEmpty()) {
             val catchablePokemon = pokemon.first()
-            if (settings.obligatoryTransfer.contains(catchablePokemon.pokemonId.name) && settings.desiredCatchProbabilityUnwanted == -1.0) {
+            if (settings.obligatoryTransfer.contains(catchablePokemon.pokemonId) && settings.desiredCatchProbabilityUnwanted == -1.0) {
                 ctx.blacklistedEncounters.add(catchablePokemon.encounterId)
                 Log.normal("Found pokemon ${catchablePokemon.pokemonId}; blacklisting because it's unwanted")
                 return
@@ -68,8 +70,7 @@ class CatchOneNearbyPokemon : Task {
                 if (result == null) {
                     // prevent trying it in the next iteration
                     ctx.blacklistedEncounters.add(catchablePokemon.encounterId)
-
-                    Log.red("No Pokeballs in your inventory || Blacklisted Pokemon.")
+                    Log.red("No Pokeballs in your inventory; blacklisting Pokemon")
                     return
                 }
 
@@ -84,15 +85,21 @@ class CatchOneNearbyPokemon : Task {
                                 "Candy, ${result.stardustList.sum()}x Stardust]"
                     Log.cyan(message)
 
-                } else
+                    ctx.server.newPokemon(catchablePokemon.latitude, catchablePokemon.longitude, encounterResult.wildPokemon.pokemonData)
+                    ctx.server.sendProfile()
+                } else {
                     Log.red("Capture of ${catchablePokemon.pokemonId} failed with status : ${result.status}")
-
                     if (result.status == CatchPokemonResponse.CatchStatus.CATCH_ERROR) {
                         Log.red("Blacklisting pokemon to prevent infinite loop")
                         ctx.blacklistedEncounters.add(catchablePokemon.encounterId)
-                    }                    
+                    }
+                }
             } else {
-                Log.red("Encounter failed with result: ${encounterResult.getStatus()}")
+                Log.red("Encounter failed with result: ${encounterResult.status}")
+                if (encounterResult.status == Status.POKEMON_INVENTORY_FULL) {
+                    Log.red("Disabling catching of Pokemon")
+                    settings.shouldCatchPokemons = false
+                }
             }
         }
     }

@@ -18,66 +18,62 @@ import ink.abb.pogo.scraper.util.Log
 import ink.abb.pogo.scraper.util.Helper
 import ink.abb.pogo.scraper.util.pokemon.getIv
 import ink.abb.pogo.scraper.util.pokemon.getIvPercentage
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean
 import ink.abb.pogo.scraper.util.pokemon.shouldTransfer
+import kotlin.concurrent.thread
 
 class ReleasePokemon : Task {
     override fun run(bot: Bot, ctx: Context, settings: Settings) {
-        val groupedPokemon = ctx.api.inventories.pokebank.pokemons.groupBy { it.pokemonId }
-        val sortByIV = settings.sortByIV
 
-        // there is still a pokemon release process
+        // if already in the progress of transfering a pokemon, then we continue to do something else.
         if (!ctx.releasing.compareAndSet(false, true)) {
-            // Log.red("There is still pokemon transfer process. skipping..")
-            return;
+            return
         }
 
-        else {
+        val groupedPokemon = ctx.api.inventories.pokebank.pokemons.groupBy { it.pokemonId }
+        val sortByIV = settings.sortByIV
+        val pokemonCounts = hashMapOf<String, Int>()
 
-            groupedPokemon.forEach {
-                val sorted = if (sortByIV) {
-                    it.value.sortedByDescending { it.getIv() }
-                } else {
-                    it.value.sortedByDescending { it.cp }
-                }
+        groupedPokemon.forEach {
+            val sorted = if (sortByIV) {
+                it.value.sortedByDescending { it.getIv() }
+            } else {
+                it.value.sortedByDescending { it.cp }
+            }
+            for ((index, pokemon) in sorted.withIndex()) {
+                // don't drop favorited, deployed, or nicknamed pokemon
+                val isFavourite = pokemon.nickname.isNotBlank() || pokemon.isFavorite || !pokemon.deployedFortId.isEmpty()
+                if (!isFavourite) {
+                    val ivPercentage = pokemon.getIvPercentage()
+                    // never transfer highest rated Pokemon (except for obligatory transfer)
+                    if (settings.obligatoryTransfer.contains(pokemon.pokemonId) || index >= settings.keepPokemonAmount) {
+                        val (shouldRelease, reason) = pokemon.shouldTransfer(settings, pokemonCounts)
 
-                for ((index, pokemon) in sorted.withIndex()) {
-                    // don't drop favourited or nicknamed pokemon
-                    val isFavourite = pokemon.nickname.isNotBlank() || pokemon.favorite || !pokemon.deployedFortId.isEmpty()
-                    if (!isFavourite) {
-                        val ivPercentage = pokemon.getIvPercentage()
-                        // never transfer highest rated Pokemon (except for obligatory transfer)
-                        if (settings.obligatoryTransfer.contains(pokemon.pokemonId.name) || index >= settings.keepPokemonAmount) {
+                        if (shouldRelease) {                        
+                            
+                            ctx.releasing.getAndSet(true)
+                            
+                            Log.yellow("Going to transfer ${pokemon.pokemonId.name} with " +
+                                    "CP ${pokemon.cp} and IV $ivPercentage%; reason: $reason")
 
-                                val (shouldRelease, reason) = pokemon.shouldTransfer(settings)
+                            // we should wait N seconds before transfering a pokemon.
 
-                                if (shouldRelease) {                                
+                                val timeStop = Helper.getRandomNumber(20,60)
+                                Log.magenta("We are going to wait for $timeStop seconds before transfering ${pokemon.pokemonId.name} (CP ${pokemon.cp} and IV $ivPercentage%)")
+                                Helper.sleepSecond(timeStop)
 
-                                    ctx.releasing.getAndSet(true)
-                                    
-                                    Log.yellow("Going to transfer ${pokemon.pokemonId.name} with " +
-                                            "CP ${pokemon.cp} and IV $ivPercentage%; reason: $reason")
+                                val result = pokemon.transferPokemon()
+                                if (result == Result.SUCCESS) {
+                                    ctx.pokemonStats.second.andIncrement
+                                    ctx.server.releasePokemon(pokemon.id)
+                                    ctx.server.sendProfile()
+                                } else {
+                                    Log.red("Failed to transfer ${pokemon.pokemonId.name}: ${result.name}")
+                                }
 
-                                    // wait for random seconds
-                                    val sleeptime = Helper.getRandomNumber(10,30)
-                                    TimeUnit.SECONDS.sleep(sleeptime.toLong())
-                                    Log.normal("Waited for $sleeptime seconds before transfering pokemon.")
-
-                                    val result = pokemon.transferPokemon()
-                                    if (result == Result.SUCCESS) {
-                                        ctx.pokemonStats.second.andIncrement
-                                        Log.green("[ReleasePokemon] Pokemon ${pokemon.pokemonId.name} successfully transfered!" +
-                                                " -- (CP ${pokemon.cp} and IV $ivPercentage%)")
-                                    } else {
-                                        Log.red("Failed to transfer ${pokemon.pokemonId.name}: ${result.name}")
-                                    }
-
-                                    ctx.releasing.getAndSet(false)
-                                }                            
+                                ctx.releasing.getAndSet(false)
                         }
                     }
-                }                
+                }
             }
         }
 

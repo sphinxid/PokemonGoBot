@@ -21,7 +21,6 @@ class HatchEggs : Task {
     override fun run(bot: Bot, ctx: Context, settings: Settings) {
         val result = ctx.api.inventories.hatchery.queryHatchedEggs()
         if (result.isNotEmpty()) {
-            ctx.api.inventories.updateInventories(true)
             result.forEachIndexed { index, it ->
                 val newPokemon = ctx.api.inventories.pokebank.getPokemonById(it.id)
                 val stats = "+${it.candy} candy; +${it.experience} XP; +${it.stardust} stardust"
@@ -39,11 +38,11 @@ class HatchEggs : Task {
                 .filter { !it.isIncubate }
                 .sortedByDescending { it.eggKmWalkedTarget }
         if (freeIncubators.isNotEmpty() && eggs.isNotEmpty() && settings.shouldAutoFillIncubators) {
-            val incubateResult = eggs.first().incubate(freeIncubators.first())
-            if (incubateResult == UseItemEggIncubatorResponseOuterClass.UseItemEggIncubatorResponse.Result.SUCCESS) {
+            val result2 = eggs.first().incubate(freeIncubators.first())
+            if (result2 == UseItemEggIncubatorResponseOuterClass.UseItemEggIncubatorResponse.Result.SUCCESS) {
                 Log.cyan("Put egg of ${eggs.first().eggKmWalkedTarget}km in unused incubator")
             } else {
-                Log.red("Failed to put egg in incubator; error: $incubateResult")
+                Log.red("Failed to put egg in incubator; error: $result2")
             }
         }
     }

@@ -26,3 +26,4 @@ fun ItemBag.size(): Int {
     }
     return count
 }
+

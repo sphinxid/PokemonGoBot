@@ -17,6 +17,9 @@ import ink.abb.pogo.scraper.util.Log
 
 class DropUselessItems : Task {
     override fun run(bot: Bot, ctx: Context, settings: Settings) {
+        if (!settings.shouldDropItems) {
+            return
+        }
 
         settings.uselessItems.forEach {
             val item = ctx.api.inventories.itemBag.getItem(it.key)
@@ -26,7 +29,6 @@ class DropUselessItems : Task {
                 if (result == RecycleInventoryItemResponseOuterClass.RecycleInventoryItemResponse.Result.SUCCESS) {
                     ctx.itemStats.second.getAndAdd(count)
                     Log.yellow("Dropped ${count}x ${it.key.name}")
-                    ctx.server.sendProfile()
                 } else {
                     Log.red("Failed to drop ${count}x ${it.key.name}: $result")
                 }

@@ -2,6 +2,7 @@
 package ink.abb.pogo.scraper.util
 
 import ink.abb.pogo.scraper.util.Log
+import java.util.concurrent.TimeUnit
 
 class Helper {
 
@@ -11,12 +12,11 @@ class Helper {
 			return (minnum + (Math.random() * ((maxnum - minnum) + 1))).toInt()
 		}
 
-		fun waitRandomSeconds(minnum: Int, maxnum: Int) {
-			val seconds = getRandomNumber(minnum, maxnum)
-			
-			Log.green("Waiting for " + seconds + " seconds... ")
-			Thread.sleep((seconds * 1000).toLong())
+		fun sleepSecond(second: Int) {
+			TimeUnit.SECONDS.sleep(second.toLong())
 		}
-
+		fun sleepMilli(millis: Long) {
+			TimeUnit.MILLISECONDS.sleep(millis)
+		}		
 	}
 }

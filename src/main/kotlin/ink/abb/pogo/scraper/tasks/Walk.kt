@@ -15,11 +15,12 @@ import ink.abb.pogo.scraper.Context
 import ink.abb.pogo.scraper.Settings
 import ink.abb.pogo.scraper.Task
 import ink.abb.pogo.scraper.util.Log
-import ink.abb.pogo.scraper.util.inventory.hasPokeballs
-import ink.abb.pogo.scraper.util.map.canLoot;
+import ink.abb.pogo.scraper.util.Helper
 import ink.abb.pogo.scraper.util.directions.getRouteCoordinates
 import ink.abb.pogo.scraper.util.map.canLoot
 import ink.abb.pogo.scraper.util.map.getCatchablePokemon
+import kotlin.concurrent.thread
+
 
 class Walk(val sortedPokestops: List<Pokestop>, val lootTimeouts: Map<String, Long>) : Task {
     override fun run(bot: Bot, ctx: Context, settings: Settings) {
@@ -87,33 +88,57 @@ class Walk(val sortedPokestops: List<Pokestop>, val lootTimeouts: Map<String, Lo
         Log.normal("Walking to ${end.toStringDegrees()} in $stepsRequired steps.")
         var remainingSteps = stepsRequired
 
+        thread(true, false, null, "Walk", 1, block = {
+            var threadRun = true
 
-        bot.runLoop(timeout, "WalkingLoop") { cancel ->
-            // don't run away when there are still Pokemon around
-            if (ctx.api.inventories.itemBag.hasPokeballs() && bot.api.map.getCatchablePokemon(ctx.blacklistedEncounters).size > 0 && settings.shouldCatchPokemons) {
-                // Stop walking
-                Log.normal("Pausing to catch pokemon...")
+            while(threadRun) {
 
-                return@runLoop
-            }
+                // default delay per steps
+                var randomTimeout = timeout + (Helper.getRandomNumber(0, timeout.toInt()).toLong() * 2)
+                Helper.sleepMilli(randomTimeout)
 
-            ctx.lat.addAndGet(deltaLat)
-            ctx.lng.addAndGet(deltaLng)
+                // 10% chance to do NOTHING.
+                var dummy = Helper.getRandomNumber(0,100)
+                if (dummy <= 5) {
 
-            ctx.server.setLocation(ctx.lat.get(), ctx.lng.get())
+                    val sleeptime = Helper.getRandomNumber(1,5)
+                    Log.yellow("I'm doing nothing .. Replicate human behavior (sleep for $sleeptime seconds.)")
 
-            remainingSteps--
-            if (remainingSteps <= 0) {
-                Log.normal("Destination reached.")
-
-                if (sendDone) {
-                    ctx.server.sendGotoDone()
+                    Helper.sleepSecond(sleeptime)
                 }
 
-                ctx.walking.set(false)
-                cancel()
+                else {
+
+                    ctx.lat.addAndGet(deltaLat)
+                    ctx.lng.addAndGet(deltaLng)
+
+                    ctx.server.setLocation(ctx.lat.get(), ctx.lng.get())
+
+                    remainingSteps--
+                    if (remainingSteps <= 0) {
+                        Log.normal("Destination reached.")
+                        ctx.walking.set(false)
+                        threadRun = false
+
+                        if (sendDone) {
+                            ctx.server.sendGotoDone()
+                        }
+
+                        // stop at the pokestop for random seconds
+                        ctx.stopAtPoint.getAndSet(true)
+                        val randomStopTimeout = Helper.getRandomNumber(30, 600)
+                        Log.blue("We are stopping at this Pokestop for $randomStopTimeout seconds.")
+                        Helper.sleepSecond(randomStopTimeout)
+
+                        ctx.stopAtPoint.getAndSet(false)
+                        Log.magenta("We are done stopping. Begin to search for our next pokestop!")
+
+                    }
+                }
             }
-        }
+
+        }) // end of thread
+
     }
 
     fun walkRoute(bot: Bot, ctx: Context, settings: Settings, end: S2LatLng, speed: Double, sendDone: Boolean) {
@@ -124,46 +149,73 @@ class Walk(val sortedPokestops: List<Pokestop>, val lootTimeouts: Map<String, Lo
         val coordinatesList = getRouteCoordinates(S2LatLng.fromDegrees(ctx.lat.get(), ctx.lng.get()), end)
         if (coordinatesList.size <= 0) {
             walk(bot, ctx, settings, end, speed, sendDone)
-        } else {
-            bot.runLoop(timeout, "WalkingLoop") { cancel ->
-                // don't run away when there are still Pokemon around
-                if (ctx.api.inventories.itemBag.hasPokeballs() && bot.api.map.getCatchablePokemon(ctx.blacklistedEncounters).size > 0 && settings.shouldCatchPokemons) {
-                    // Stop walking
-                    Log.normal("Pausing to catch pokemon...")
-                    return@runLoop
-                }
+        } else {            
 
-                val start = S2LatLng.fromDegrees(ctx.lat.get(), ctx.lng.get())
-                val step = coordinatesList.first()
-                coordinatesList.removeAt(0)
-                val diff = step.sub(start)
-                val distance = start.getEarthDistance(step)
-                val timeRequired = distance / speed
-                val stepsRequired = timeRequired / (timeout.toDouble() / 1000.toDouble())
-                if (stepsRequired.equals(0)) {
-                    cancel()
-                }
-                val deltaLat = diff.latDegrees() / stepsRequired
-                val deltaLng = diff.lngDegrees() / stepsRequired
-                var remainingSteps = stepsRequired
-                while (remainingSteps > 0) {
-                    ctx.lat.addAndGet(deltaLat)
-                    ctx.lng.addAndGet(deltaLng)
-                    ctx.server.setLocation(ctx.lat.get(), ctx.lng.get())
-                    remainingSteps--
-                    Thread.sleep(timeout)
-                }
+            thread(true, false, null, "WalkRoute", 1, block = {
+                var threadRun = true
 
-                if (coordinatesList.size <= 0) {
-                    Log.normal("Destination reached.")
-                    if (sendDone) {
-                        ctx.server.sendGotoDone()
+                while(threadRun) {
+
+                    // default delay per steps
+                    var randomTimeout = timeout + (Helper.getRandomNumber(0, timeout.toInt()).toLong() * 2)
+                    Helper.sleepMilli(randomTimeout)
+
+                    // 10% chance to do NOTHING.
+                    var dummy = Helper.getRandomNumber(0,100)
+                    if (dummy <= 5) {
+
+                        val sleeptime = Helper.getRandomNumber(1,5)
+                        Log.yellow("I'm doing nothing .. Replicate human behavior (sleep for $sleeptime seconds.)")
+
+                        Helper.sleepSecond(sleeptime)
                     }
-                    ctx.walking.set(false)
-                    cancel()
 
+                    else {
+
+                        val start = S2LatLng.fromDegrees(ctx.lat.get(), ctx.lng.get())
+                        val step = coordinatesList.first()
+                        coordinatesList.removeAt(0)
+                        val diff = step.sub(start)
+                        val distance = start.getEarthDistance(step)
+                        val timeRequired = distance / speed
+                        val stepsRequired = timeRequired / (timeout.toDouble() / 1000.toDouble())
+
+                        if (stepsRequired.equals(0)) {
+                            threadRun = false                            
+                        }
+
+                        val deltaLat = diff.latDegrees() / stepsRequired
+                        val deltaLng = diff.lngDegrees() / stepsRequired
+                        var remainingSteps = stepsRequired
+                        while (remainingSteps > 0) {
+                            ctx.lat.addAndGet(deltaLat)
+                            ctx.lng.addAndGet(deltaLng)
+                            ctx.server.setLocation(ctx.lat.get(), ctx.lng.get())
+                            remainingSteps--
+                            Thread.sleep(timeout)
+                        }
+
+                        if (coordinatesList.size <= 0) {
+                            Log.normal("Destination reached.")
+                            if (sendDone) {
+                                ctx.server.sendGotoDone()
+                            }
+                           
+                            ctx.stopAtPoint.getAndSet(true)
+
+                            val timeStop = Helper.getRandomNumber(200,600)
+                            Log.magenta("We are going to stop at this POINT for $timeStop seconds.")
+                            Helper.sleepSecond(timeStop)
+
+                            ctx.stopAtPoint.getAndSet(false)
+                            Log.cyan("We are done stopping now!")                        
+
+                            ctx.walking.set(false)
+                            threadRun = false
+                        }
+                    }
                 }
-            }
+            }) // end of thread
         }
     }
 
@@ -189,52 +241,57 @@ class Walk(val sortedPokestops: List<Pokestop>, val lootTimeouts: Map<String, Lo
 
         Log.normal("Walking to ${end.toStringDegrees()} in $stepsRequired steps.")
         var remainingStepsGoing = stepsRequired
-        var remainingStepsComing = stepsRequired
-        var walking = true
-        bot.runLoop(timeout, "WalkingLoop") { cancel ->
-            // don't run away when there are still Pokemon around
-            if (walking) {
-                if (bot.api.map.getCatchablePokemon(ctx.blacklistedEncounters).size > 0 && settings.shouldCatchPokemons) {
-                    // Stop walking
-                    walking = false
-                    Log.normal("Pausing to catch pokemon...")
-                } // Else continue walking.
-            } else {
-                if (bot.api.map.getCatchablePokemon(ctx.blacklistedEncounters).size <= 0) {
-                    walking = true
-                    Log.normal("Resuming walk.")
-                } // Else continue waiting.
-            }
+        var remainingStepsComing = stepsRequired        
 
-            if (!walking) {
-                return@runLoop
-            }
-            if (remainingStepsGoing > 0) {
-                ctx.lat.addAndGet(deltaLat)
-                ctx.lng.addAndGet(deltaLng)
+        thread(true, false, null, "WalkAndComeBack", 1, block = {
+            var threadRun = true
 
-                ctx.server.setLocation(ctx.lat.get(), ctx.lng.get())
-                remainingStepsGoing--
-            } else if (remainingStepsGoing <= 0) {
-                ctx.lat.addAndGet(deltaLat2)
-                ctx.lng.addAndGet(deltaLng2)
+            while(threadRun) {
 
-                ctx.server.setLocation(ctx.lat.get(), ctx.lng.get())
+                // default delay per steps
+                var randomTimeout = timeout + (Helper.getRandomNumber(0, timeout.toInt()).toLong() * 2)
+                Helper.sleepMilli(randomTimeout)
 
-                remainingStepsComing--
-            }
+                // 10% chance to do NOTHING.
+                var dummy = Helper.getRandomNumber(0,100)
+                if (dummy <= 5) {
 
-            if (remainingStepsComing <= 0) {
-                Log.normal("Destination reached.")
+                    val sleeptime = Helper.getRandomNumber(1,5)
+                    Log.yellow("I'm doing nothing .. Replicate human behavior (sleep for $sleeptime seconds.)")
 
-                if (sendDone) {
-                    ctx.server.sendGotoDone()
+                    Helper.sleepSecond(sleeptime)
                 }
 
-                ctx.walking.set(false)
-                cancel()
-            }
-        }
+                else {
+
+                    if (remainingStepsGoing > 0) {
+                        ctx.lat.addAndGet(deltaLat)
+                        ctx.lng.addAndGet(deltaLng)
+
+                        ctx.server.setLocation(ctx.lat.get(), ctx.lng.get())
+                        remainingStepsGoing--
+                    } else if (remainingStepsGoing <= 0) {
+                        ctx.lat.addAndGet(deltaLat2)
+                        ctx.lng.addAndGet(deltaLng2)
+
+                        ctx.server.setLocation(ctx.lat.get(), ctx.lng.get())
+
+                        remainingStepsComing--
+                    }
+
+                    if (remainingStepsComing <= 0) {
+                        Log.normal("Destination reached.")
+
+                        if (sendDone) {
+                            ctx.server.sendGotoDone()
+                        }
+
+                        ctx.walking.set(false)
+                        threadRun = false
+                    }
+                }
+            }        
+        }) // end of thread
     }
 
     private fun selectRandom(pokestops: List<Pokestop>, ctx: Context): Pokestop {

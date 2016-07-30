@@ -10,9 +10,11 @@ package ink.abb.pogo.scraper
 
 import com.google.common.util.concurrent.AtomicDouble
 import com.pokegoapi.api.PokemonGo
+import com.pokegoapi.api.map.MapObjects
 import com.pokegoapi.api.player.PlayerProfile
+import ink.abb.pogo.scraper.gui.SocketServer
+import ink.abb.pogo.scraper.gui.WebServer
 import com.pokegoapi.api.pokemon.Pokemon
-import ink.abb.pogo.scraper.*
 import ink.abb.pogo.scraper.tasks.*
 import ink.abb.pogo.scraper.util.Log
 import ink.abb.pogo.scraper.util.Helper
@@ -21,15 +23,12 @@ import ink.abb.pogo.scraper.util.pokemon.getIv
 import ink.abb.pogo.scraper.util.pokemon.getIvPercentage
 import ink.abb.pogo.scraper.util.pokemon.getStatsFormatted
 import java.util.*
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
-import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.concurrent.fixedRateTimer
 import kotlin.concurrent.thread
-import java.util.concurrent.TimeUnit
-import com.pokegoapi.exceptions.LoginFailedException
 
-class Bot(var api: PokemonGo, val settings: Settings) {
+class Bot(val api: PokemonGo, val settings: Settings) {
 
     var ctx = Context(
             api,
@@ -39,19 +38,20 @@ class Bot(var api: PokemonGo, val settings: Settings) {
             AtomicLong(api.playerProfile.stats.experience),
             Pair(AtomicInteger(0), AtomicInteger(0)),
             Pair(AtomicInteger(0), AtomicInteger(0)),
-            mutableSetOf()            
+            mutableSetOf(),
+            SocketServer()
     )
 
     @Synchronized
-    fun start() {
+    fun start() {        
 
-        Log.normal();
+        Log.normal()
         Log.normal("Name: ${ctx.profile.username}")
         Log.normal("Team: ${ctx.profile.team}")
         Log.normal("Pokecoin: ${ctx.profile.currencies.get(PlayerProfile.Currency.POKECOIN)}")
         Log.normal("Stardust: ${ctx.profile.currencies.get(PlayerProfile.Currency.STARDUST)}")
         Log.normal("Level ${ctx.profile.stats.level}, Experience ${ctx.profile.stats.experience}")
-        Log.normal("Pokebank ${ctx.api.inventories.pokebank.pokemons.size}/${ctx.profile.pokemonStorage}")
+        Log.normal("Pokebank ${ctx.api.inventories.pokebank.pokemons.size + ctx.api.inventories.hatchery.eggs.size}/${ctx.profile.pokemonStorage}")
         Log.normal("Inventory ${ctx.api.inventories.itemBag.size()}/${ctx.profile.itemStorage}")
         //Log.normal("Inventory bag ${ctx.api.bag}")
 
@@ -77,16 +77,37 @@ class Bot(var api: PokemonGo, val settings: Settings) {
         val catch = CatchOneNearbyPokemon()
         val release = ReleasePokemon()
         val hatchEggs = HatchEggs()
+        val export = Export()
+
+        if (settings.export.length > 0)
+            task(export)
 
         task(keepalive)
         Log.normal("Getting initial pokestops...")
-        // TODO: Figure out why pokestops are only showing up the first time api.map.mapObjects is called (???)
-        val reply = api.map.mapObjects
-        Log.normal("Got ${reply.pokestops.size} pokestops")
+
+        val sleepTimeout = 10L
+        var reply: MapObjects?
+        do {
+            reply = api.map.mapObjects
+            Log.normal("Got ${reply.pokestops.size} pokestops")
+            if (reply == null || reply.pokestops.size == 0) {
+                Log.red("Retrying in $sleepTimeout seconds...")
+                Thread.sleep(sleepTimeout * 1000)
+            }
+        } while (reply == null || reply.pokestops.size == 0)
+
+        Helper.sleepSecond(5)
         val process = ProcessPokestops(reply.pokestops)
 
+        Log.setContext(ctx)
 
-        // BotLoop 1
+        if(settings.guiPort > 0){
+            Log.normal("Running webserver on port ${settings.guiPort}")
+            WebServer().start(settings.guiPort, settings.guiPortSocket)
+            ctx.server.start(ctx, settings.guiPortSocket)
+        }
+
+       // BotLoop 1
         thread(true, false, null, "BotLoop1", 1, block = {
             var threadRun = true
 
@@ -98,7 +119,7 @@ class Bot(var api: PokemonGo, val settings: Settings) {
                 // process
                 task(process)
 
-                TimeUnit.SECONDS.sleep(Helper.getRandomNumber(4,7).toLong())
+                Helper.sleepSecond(Helper.getRandomNumber(4,7))
             }
         })
 
@@ -111,7 +132,10 @@ class Bot(var api: PokemonGo, val settings: Settings) {
                 synctask(profile)
                 synctask(hatchEggs)
 
-                TimeUnit.SECONDS.sleep(Helper.getRandomNumber(50,300).toLong())
+                if (settings.export.length > 0)
+                    task(export)
+
+                Helper.sleepSecond(Helper.getRandomNumber(50,300))
             }
         })
 
@@ -135,12 +159,13 @@ class Bot(var api: PokemonGo, val settings: Settings) {
                     synctask(drop)
                 }                                
 
-                TimeUnit.SECONDS.sleep(Helper.getRandomNumber(3,10).toLong())
+                Helper.sleepSecond(Helper.getRandomNumber(3,10))
             }
 
         })
 
     }
+
 
     @Suppress("UNUSED_VARIABLE")
     fun synctask(task: Task) {
@@ -149,7 +174,10 @@ class Bot(var api: PokemonGo, val settings: Settings) {
 
                 try {            
                     task.run(this, ctx, settings)
-                } catch (lfe: LoginFailedException) {
+
+                }
+                /* 
+                catch (lfe: LoginFailedException) {
 
                     lfe.printStackTrace()
 
@@ -158,7 +186,9 @@ class Bot(var api: PokemonGo, val settings: Settings) {
                     synchronized(ctx) {
                         ctx.api = api2
                     }
-                } catch (e: Exception) {
+                } */ 
+
+                catch (e: Exception) {
                     e.printStackTrace()
                 }
             }
@@ -169,7 +199,9 @@ class Bot(var api: PokemonGo, val settings: Settings) {
     fun task(task: Task) {
         try {
             task.run(this, ctx, settings)
-        } catch (lfe: LoginFailedException) {
+        } 
+        /*
+        catch (lfe: LoginFailedException) {
 
             lfe.printStackTrace()
 
@@ -178,7 +210,8 @@ class Bot(var api: PokemonGo, val settings: Settings) {
             synchronized(ctx) {
                 ctx.api = api2
             }
-        } catch (e: Exception) {
+        } */
+        catch (e: Exception) {
             e.printStackTrace()
         }       
     }

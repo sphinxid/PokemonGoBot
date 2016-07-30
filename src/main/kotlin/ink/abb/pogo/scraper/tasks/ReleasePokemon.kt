@@ -62,10 +62,12 @@ class ReleasePokemon : Task {
                                 Helper.sleepSecond(timeStop)
 
                                 val result = pokemon.transferPokemon()
+
                                 if (result == Result.SUCCESS) {
                                     ctx.pokemonStats.second.andIncrement
                                     ctx.server.releasePokemon(pokemon.id)
                                     ctx.server.sendProfile()
+                                    Log.green("[ReleasePokemon] Pokemon ${pokemon.pokemonId.name} successfully transfered!" + " -- (CP ${pokemon.cp} and IV $ivPercentage%)")                                    
                                 } else {
                                     Log.red("Failed to transfer ${pokemon.pokemonId.name}: ${result.name}")
                                 }

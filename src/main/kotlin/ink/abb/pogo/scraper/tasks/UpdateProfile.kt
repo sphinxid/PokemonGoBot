@@ -42,7 +42,11 @@ class UpdateProfile : Task {
                     "Inventory ${ctx.api.inventories.itemBag.size()}/${ctx.profile.itemStorage}"
 
             )
-            ctx.server.sendProfile()
+
+            if (settings.guiPortSocket > 0) {
+                ctx.server.sendProfile()
+            }
+            
         } catch (e: Exception) {
             Log.red("Failed to update profile and inventories")
         }

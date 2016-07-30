@@ -18,7 +18,6 @@ import ink.abb.pogo.scraper.util.Log
 import ink.abb.pogo.scraper.util.Helper
 import ink.abb.pogo.scraper.util.directions.getRouteCoordinates
 import ink.abb.pogo.scraper.util.map.canLoot
-import ink.abb.pogo.scraper.util.map.getCatchablePokemon
 import kotlin.concurrent.thread
 
 
@@ -53,7 +52,9 @@ class Walk(val sortedPokestops: List<Pokestop>, val lootTimeouts: Map<String, Lo
                 // Select random pokestop from the 5 nearest while taking the distance into account
                 val chosenPokestop = selectRandom(nearestUnused.take(settings.randomNextPokestop), ctx)
 
-                ctx.server.sendPokestop(chosenPokestop)
+                if (settings.guiPortSocket > 0) {
+                    ctx.server.sendPokestop(chosenPokestop)
+                }
 
                 if (settings.shouldDisplayPokestopName)
                     Log.normal("Walking to pokestop \"${chosenPokestop.details.name}\"")
@@ -112,7 +113,9 @@ class Walk(val sortedPokestops: List<Pokestop>, val lootTimeouts: Map<String, Lo
                     ctx.lat.addAndGet(deltaLat)
                     ctx.lng.addAndGet(deltaLng)
 
-                    ctx.server.setLocation(ctx.lat.get(), ctx.lng.get())
+                    if (settings.guiPortSocket > 0) {
+                        ctx.server.setLocation(ctx.lat.get(), ctx.lng.get())
+                    }
 
                     remainingSteps--
                     if (remainingSteps <= 0) {
@@ -121,7 +124,8 @@ class Walk(val sortedPokestops: List<Pokestop>, val lootTimeouts: Map<String, Lo
                         threadRun = false
 
                         if (sendDone) {
-                            ctx.server.sendGotoDone()
+                            if (settings.guiPortSocket > 0)
+                                ctx.server.sendGotoDone()
                         }
 
                         // stop at the pokestop for random seconds
@@ -190,7 +194,11 @@ class Walk(val sortedPokestops: List<Pokestop>, val lootTimeouts: Map<String, Lo
                         while (remainingSteps > 0) {
                             ctx.lat.addAndGet(deltaLat)
                             ctx.lng.addAndGet(deltaLng)
-                            ctx.server.setLocation(ctx.lat.get(), ctx.lng.get())
+
+                            if (settings.guiPortSocket > 0) {
+                                ctx.server.setLocation(ctx.lat.get(), ctx.lng.get())
+                            }
+
                             remainingSteps--
                             Thread.sleep(timeout)
                         }
@@ -198,7 +206,8 @@ class Walk(val sortedPokestops: List<Pokestop>, val lootTimeouts: Map<String, Lo
                         if (coordinatesList.size <= 0) {
                             Log.normal("Destination reached.")
                             if (sendDone) {
-                                ctx.server.sendGotoDone()
+                                if (settings.guiPortSocket > 0)
+                                    ctx.server.sendGotoDone()
                             }
                            
                             ctx.stopAtPoint.getAndSet(true)
@@ -268,13 +277,18 @@ class Walk(val sortedPokestops: List<Pokestop>, val lootTimeouts: Map<String, Lo
                         ctx.lat.addAndGet(deltaLat)
                         ctx.lng.addAndGet(deltaLng)
 
-                        ctx.server.setLocation(ctx.lat.get(), ctx.lng.get())
+                        if (settings.guiPortSocket > 0) {
+                            ctx.server.setLocation(ctx.lat.get(), ctx.lng.get())
+                        }
+
                         remainingStepsGoing--
                     } else if (remainingStepsGoing <= 0) {
                         ctx.lat.addAndGet(deltaLat2)
                         ctx.lng.addAndGet(deltaLng2)
 
-                        ctx.server.setLocation(ctx.lat.get(), ctx.lng.get())
+                        if (settings.guiPortSocket > 0) {
+                            ctx.server.setLocation(ctx.lat.get(), ctx.lng.get())
+                        }
 
                         remainingStepsComing--
                     }
@@ -283,7 +297,8 @@ class Walk(val sortedPokestops: List<Pokestop>, val lootTimeouts: Map<String, Lo
                         Log.normal("Destination reached.")
 
                         if (sendDone) {
-                            ctx.server.sendGotoDone()
+                            if (settings.guiPortSocket > 0)
+                                ctx.server.sendGotoDone()
                         }
 
                         ctx.walking.set(false)

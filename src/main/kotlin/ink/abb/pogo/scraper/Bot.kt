@@ -24,7 +24,6 @@ import ink.abb.pogo.scraper.util.pokemon.getIvPercentage
 import ink.abb.pogo.scraper.util.pokemon.getStatsFormatted
 import java.util.*
 import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.concurrent.thread
@@ -97,7 +96,7 @@ class Bot(val api: PokemonGo, val settings: Settings) {
             }
         } while (reply == null || reply.pokestops.size == 0)
 
-        TimeUnit.SECONDS.sleep(5)
+        Helper.sleepSecond(5)
         val process = ProcessPokestops(reply.pokestops)
 
         Log.setContext(ctx)
@@ -120,7 +119,7 @@ class Bot(val api: PokemonGo, val settings: Settings) {
                 // process
                 task(process)
 
-                TimeUnit.SECONDS.sleep(Helper.getRandomNumber(4,7).toLong())
+                Helper.sleepSecond(Helper.getRandomNumber(4,7))
             }
         })
 
@@ -136,7 +135,7 @@ class Bot(val api: PokemonGo, val settings: Settings) {
                 if (settings.export.length > 0)
                     task(export)
 
-                TimeUnit.SECONDS.sleep(Helper.getRandomNumber(50,300).toLong())
+                Helper.sleepSecond(Helper.getRandomNumber(50,300))
             }
         })
 
@@ -160,7 +159,7 @@ class Bot(val api: PokemonGo, val settings: Settings) {
                     synctask(drop)
                 }                                
 
-                TimeUnit.SECONDS.sleep(Helper.getRandomNumber(3,10).toLong())
+                Helper.sleepSecond(Helper.getRandomNumber(3,10))
             }
 
         })

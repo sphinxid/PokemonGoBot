@@ -16,6 +16,7 @@ import com.pokegoapi.api.inventory.Pokeball
 import com.pokegoapi.api.map.pokemon.CatchResult
 import com.pokegoapi.api.map.pokemon.CatchablePokemon
 import ink.abb.pogo.scraper.util.Log
+import ink.abb.pogo.scraper.util.Helper
 
 /**
  * Extension function to make the code more readable in the CatchOneNearbyPokemon task
@@ -42,9 +43,19 @@ fun CatchablePokemon.catch(captureProbability: CaptureProbability, itemBag: Item
         result = catch(captureProbability, itemBag, desiredCatchProbability, alwaysCurve, allowBerries)
 
         if (result == null ||
+                // UNKNOWN reason it's failed.
                 (result.getStatus() != CatchStatus.CATCH_ESCAPE && result.getStatus() != CatchStatus.CATCH_MISSED)) {
             break
+        } else {
+
+            // poke ball throwed, but failed to capture, then
+            // we wait for sometime before next throw
+
+            val sleeptime = Helper.getRandomNumber(2,10)
+            Log.normal("Waiting for $sleeptime seconds, before throwing the next ball.")
+            Helper.sleepSecond(sleeptime)               
         }
+
         numThrows++
     } while (amount < 0 || numThrows < amount)
 

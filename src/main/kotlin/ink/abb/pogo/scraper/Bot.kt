@@ -82,6 +82,7 @@ class Bot(val api: PokemonGo, val settings: Settings) {
         if (settings.export.length > 0)
             task(export)
 
+        Helper.sleepSecond(2)
         task(keepalive)
         Log.normal("Getting initial pokestops...")
 
@@ -107,7 +108,9 @@ class Bot(val api: PokemonGo, val settings: Settings) {
             ctx.server.start(ctx, settings.guiPortSocket)
         }
 
-       // BotLoop 1
+        // BotLoop 1        
+        Helper.sleepSecond(Helper.getRandomNumber(3,7))
+        Log.normal("Starting BotLoop1...")
         thread(true, false, null, "BotLoop1", 1, block = {
             var threadRun = true
 
@@ -124,12 +127,14 @@ class Bot(val api: PokemonGo, val settings: Settings) {
         })
 
         // BotLoop 2
+        Helper.sleepSecond(Helper.getRandomNumber(3,7))
+        Log.normal("Starting BotLoop2...")
         thread(true, false, null, "BotLoop2", 1, block = {
             var threadRun = true
 
             while(threadRun) {
 
-                synctask(profile)
+                synctask(profile)                
                 synctask(hatchEggs)
 
                 // drop items
@@ -145,6 +150,8 @@ class Bot(val api: PokemonGo, val settings: Settings) {
         })
 
         // BotLoop 3
+        Helper.sleepSecond(Helper.getRandomNumber(3,7))
+        Log.normal("Starting BotLoop3...")
         thread(true, false, null, "BotLoop3", 1, block = {
             var threadRun = true
 
@@ -172,7 +179,8 @@ class Bot(val api: PokemonGo, val settings: Settings) {
         synchronized(ctx) {
             synchronized(settings) {
 
-                try {            
+                try {
+                    Helper.sleepMilli((Helper.getRandomNumber(1,3) * 100).toLong())
                     task.run(this, ctx, settings)
 
                 }
@@ -198,6 +206,7 @@ class Bot(val api: PokemonGo, val settings: Settings) {
     @Suppress("UNUSED_VARIABLE")
     fun task(task: Task) {
         try {
+            Helper.sleepMilli((Helper.getRandomNumber(1,3) * 100).toLong())
             task.run(this, ctx, settings)
         } 
         /*

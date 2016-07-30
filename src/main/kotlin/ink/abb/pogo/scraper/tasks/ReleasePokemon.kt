@@ -65,8 +65,12 @@ class ReleasePokemon : Task {
 
                                 if (result == Result.SUCCESS) {
                                     ctx.pokemonStats.second.andIncrement
-                                    ctx.server.releasePokemon(pokemon.id)
-                                    ctx.server.sendProfile()
+
+                                    if (settings.guiPortSocket > 0) {
+                                        ctx.server.releasePokemon(pokemon.id)
+                                        ctx.server.sendProfile()
+                                    }
+                                    
                                     Log.green("[ReleasePokemon] Pokemon ${pokemon.pokemonId.name} successfully transfered!" + " -- (CP ${pokemon.cp} and IV $ivPercentage%)")                                    
                                 } else {
                                     Log.red("Failed to transfer ${pokemon.pokemonId.name}: ${result.name}")

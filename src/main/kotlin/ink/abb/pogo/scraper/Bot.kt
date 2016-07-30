@@ -78,6 +78,10 @@ class Bot(val api: PokemonGo, val settings: Settings) {
         val catch = CatchOneNearbyPokemon()
         val release = ReleasePokemon()
         val hatchEggs = HatchEggs()
+        val export = Export()
+
+        if (settings.export.length > 0)
+            task(export)
 
         task(keepalive)
         Log.normal("Getting initial pokestops...")
@@ -95,7 +99,6 @@ class Bot(val api: PokemonGo, val settings: Settings) {
 
         TimeUnit.SECONDS.sleep(5)
         val process = ProcessPokestops(reply.pokestops)
-
 
         Log.setContext(ctx)
 
@@ -129,6 +132,9 @@ class Bot(val api: PokemonGo, val settings: Settings) {
 
                 synctask(profile)
                 synctask(hatchEggs)
+
+                if (settings.export.length > 0)
+                    task(export)
 
                 TimeUnit.SECONDS.sleep(Helper.getRandomNumber(50,300).toLong())
             }

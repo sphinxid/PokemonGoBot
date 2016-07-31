@@ -48,8 +48,8 @@ class Export : Task {
             val output = ArrayList<Array<String>>()
 
             // Output player information
-            output.add(arrayOf("Name", ctx.profile.username))
-            output.add(arrayOf("Team", ctx.profile.team.name))
+            output.add(arrayOf("Name", ctx.profile.playerData.username))
+            output.add(arrayOf("Team", ctx.profile.playerData.team.name))
             output.add(arrayOf("Pokecoin", "${ctx.profile.currencies.get(PlayerProfile.Currency.POKECOIN)}"))
             output.add(arrayOf("Stardust", "${ctx.profile.currencies.get(PlayerProfile.Currency.STARDUST)}"))
             output.add(arrayOf("Level", "${ctx.profile.stats.level}"))
@@ -70,8 +70,8 @@ class Export : Task {
             output.add(arrayOf("Prestige Raised Total", "${ctx.profile.stats.prestigeRaisedTotal}"))
             output.add(arrayOf("Prestige Dropped Total", "${ctx.profile.stats.prestigeDroppedTotal}"))
             output.add(arrayOf("Pokemon Deployed", "${ctx.profile.stats.pokemonDeployed}"))
-            output.add(arrayOf("Pokebank", "${ctx.api.inventories.pokebank.pokemons.size + ctx.api.inventories.hatchery.eggs.size}", "${ctx.profile.pokemonStorage}"))
-            output.add(arrayOf("Inventory", "${ctx.api.inventories.itemBag.size()}", "${ctx.profile.itemStorage}"))
+            output.add(arrayOf("Pokebank", "${ctx.api.inventories.pokebank.pokemons.size + ctx.api.inventories.hatchery.eggs.size}", "${ctx.profile.playerData.maxPokemonStorage}"))
+            output.add(arrayOf("Inventory", "${ctx.api.inventories.itemBag.size()}", "${ctx.profile.playerData.maxItemStorage}"))
             output.add(arrayOf("Last Update", dateFormatter.format(dateNow)))
             output.add(arrayOf(""))
 

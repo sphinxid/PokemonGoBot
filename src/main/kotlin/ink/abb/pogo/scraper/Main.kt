@@ -29,6 +29,7 @@ fun getAuth(settings: Settings, http: OkHttpClient): CredentialProvider {
     val credentials = settings.credentials
     val auth = if (credentials is GoogleCredentials) {
         if (credentials.token.isBlank()) {
+
             val provider = GoogleUserCredentialProvider(http, time)
 
             println("Please go to " + GoogleUserCredentialProvider.LOGIN_URL)
@@ -68,6 +69,16 @@ fun getAuth(settings: Settings, http: OkHttpClient): CredentialProvider {
 }
 
 fun main(args: Array<String>) {
+
+    val (api, settings) = login()
+
+    val bot = Bot(api, settings)
+    Runtime.getRuntime().addShutdownHook(thread(start = false) { bot.stop() })
+
+    bot.start()
+}
+
+fun login(): Pair<PokemonGo, Settings> {
     val builder = OkHttpClient.Builder()
     builder.connectTimeout(60, TimeUnit.SECONDS)
     builder.readTimeout(60, TimeUnit.SECONDS)
@@ -86,6 +97,7 @@ fun main(args: Array<String>) {
 
     Log.normal("Logging in to game server...")
 
+/*
     val retryCount = 3
     val errorTimeout = 1000L
 
@@ -98,7 +110,6 @@ fun main(args: Array<String>) {
         } catch (e: LoginFailedException) {
             Log.red("Server refused your login credentials. Are they correct?")
             System.exit(1)
-            return
         } catch (e: RemoteServerException) {
             Log.red("Server returned unexpected error: ${e.message}")
             if (retries-- > 0) {
@@ -110,14 +121,12 @@ fun main(args: Array<String>) {
 
     retries = retryCount
 
-    var api: PokemonGo? = null
     do {
         try {
             api = PokemonGo(auth, http, time)
         } catch (e: LoginFailedException) {
             Log.red("Server refused your login credentials. Are they correct?")
             System.exit(1)
-            return
         } catch (e: RemoteServerException) {
             Log.red("Server returned unexpected error")
             if (retries-- > 0) {
@@ -130,20 +139,86 @@ fun main(args: Array<String>) {
     if (api == null) {
         Log.red("Failed to login. Stopping")
         System.exit(1)
-        return
     }
+*/
+
+    var (api, auth) = getPokemonGoApi(settings, http)
 
     Log.normal("Logged in successfully")
 
     print("Getting profile data from pogo server")
     while (api.playerProfile == null) {
         print(".")
-        Thread.sleep(1000)
+        Thread.sleep(3000)
     }
     println(".")
 
-    val bot = Bot(api, settings)
-    Runtime.getRuntime().addShutdownHook(thread(start = false) { bot.stop() })
+    return Pair(api, settings)
+}
 
-    bot.start()
+fun getPokemonGoApi(settings: Settings, http: OkHttpClient): Pair<PokemonGo, CredentialProvider> {
+    val retryLimit = 5
+    val errorTimeout = 5000L
+    var countDown = retryLimit
+
+    var auth = try {
+        getAuth(settings, http)
+    } catch (e: Exception) {
+        null
+    }
+
+    if (auth == null) {        
+        do {
+            try {
+                Log.normal("Retrying...")
+                Thread.sleep(errorTimeout)
+
+                auth = getAuth(settings, http)
+                countDown--            
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+
+        } while (auth == null && countDown > 0)
+
+        if (countDown <= 0) {
+            Log.red("Unable to Login - EXIT")
+            System.exit(1)
+        }
+    }
+
+    //////////////////////////////
+
+    if (auth != null) {
+        countDown = retryLimit
+
+        var api = try {
+            PokemonGo(auth, http, time)
+        } catch(e: Exception) {
+            null
+        }
+
+        if (api == null) {
+            countDown = retryLimit
+            do {
+                try {
+                    Log.normal("Retrying...")
+                    Thread.sleep(errorTimeout)
+
+                    api = PokemonGo(auth, http, time)
+                    countDown--
+                } catch(e: Exception) {
+                    e.printStackTrace()
+                }                
+            } while (api == null && countDown >0)
+        }
+
+        if (api != null) {
+            return Pair(api, auth)
+        }
+    } 
+
+    Log.red("Cannot get PokemonGo API Object")
+    System.exit(1)
+    throw Exception("Failed to login!")
 }

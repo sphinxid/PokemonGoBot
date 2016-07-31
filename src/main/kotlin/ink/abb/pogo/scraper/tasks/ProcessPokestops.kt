@@ -44,8 +44,6 @@ class ProcessPokestops(var pokestops: MutableCollection<Pokestop>) : Task {
             val distanceB = self.getEarthDistance(locationB)
             distanceA.compareTo(distanceB)
         })
-        if (startPokeStop == null)
-            startPokeStop = sortedPokestops.first()
 
         if (settings.shouldLootPokestop) {
             val loot = LootOneNearbyPokestop(sortedPokestops, lootTimeouts)

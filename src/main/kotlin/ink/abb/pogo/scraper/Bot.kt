@@ -27,6 +27,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.concurrent.thread
+import com.pokegoapi.exceptions.LoginFailedException
 
 class Bot(val api: PokemonGo, val settings: Settings) {
 
@@ -145,6 +146,8 @@ class Bot(val api: PokemonGo, val settings: Settings) {
                 if (settings.export.length > 0)
                     task(export)
 
+                displayStatus()                    
+
                 Helper.sleepSecond(Helper.getRandomNumber(120,300))
             }
         })
@@ -183,19 +186,17 @@ class Bot(val api: PokemonGo, val settings: Settings) {
                     Helper.sleepMilli((Helper.getRandomNumber(1,3) * 100).toLong())
                     task.run(this, ctx, settings)
 
-                }
-                /* 
+                }                
                 catch (lfe: LoginFailedException) {
 
                     lfe.printStackTrace()
 
-                    val (api2, auth) = login()
+                    val (api2, settings2) = login()
 
                     synchronized(ctx) {
                         ctx.api = api2
                     }
-                } */ 
-
+                }  
                 catch (e: Exception) {
                     e.printStackTrace()
                 }
@@ -208,18 +209,17 @@ class Bot(val api: PokemonGo, val settings: Settings) {
         try {
             Helper.sleepMilli((Helper.getRandomNumber(1,3) * 100).toLong())
             task.run(this, ctx, settings)
-        } 
-        /*
+        }         
         catch (lfe: LoginFailedException) {
 
             lfe.printStackTrace()
 
-            val (api2, auth) = login()
+            val (api2, settings2) = login()
 
             synchronized(ctx) {
                 ctx.api = api2
             }
-        } */
+        } 
         catch (e: Exception) {
             e.printStackTrace()
         }       
@@ -231,5 +231,11 @@ class Bot(val api: PokemonGo, val settings: Settings) {
 
         Log.red("Stopping bot loops...")
         Log.red("All bot loops stopped.")
+    }
+
+    fun displayStatus() {
+        Log.blue("status of ctx.releasing => {$ctx.releasing.get().toString()}")
+        Log.blue("status of ctx.stopAtPoint => {$ctx.stopAtPoint.get().toString()}")
+        Log.blue("status of ctx.walking => {$ctx.walking.get().toString()}")
     }
 }

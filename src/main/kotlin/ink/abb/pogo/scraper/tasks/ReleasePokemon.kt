@@ -57,15 +57,21 @@ class ReleasePokemon : Task {
 
                             // we should wait N seconds before transfering a pokemon.
 
-                                val timeStop = Helper.getRandomNumber(20,60)
+                                val timeStop = Helper.getRandomNumber(10,30)
                                 Log.magenta("We are going to wait for $timeStop seconds before transfering ${pokemon.pokemonId.name} (CP ${pokemon.cp} and IV $ivPercentage%)")
                                 Helper.sleepSecond(timeStop)
 
                                 val result = pokemon.transferPokemon()
+
                                 if (result == Result.SUCCESS) {
                                     ctx.pokemonStats.second.andIncrement
-                                    ctx.server.releasePokemon(pokemon.id)
-                                    ctx.server.sendProfile()
+
+                                    if (settings.guiPortSocket > 0) {
+                                        ctx.server.releasePokemon(pokemon.id)
+                                        ctx.server.sendProfile()
+                                    }
+                                    
+                                    Log.green("[ReleasePokemon] Pokemon ${pokemon.pokemonId.name} successfully transfered!" + " -- (CP ${pokemon.cp} and IV $ivPercentage%)")                                    
                                 } else {
                                     Log.red("Failed to transfer ${pokemon.pokemonId.name}: ${result.name}")
                                 }

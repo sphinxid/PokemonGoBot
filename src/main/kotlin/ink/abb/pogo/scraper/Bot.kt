@@ -27,6 +27,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.concurrent.thread
+import com.pokegoapi.exceptions.LoginFailedException
 
 class Bot(val api: PokemonGo, val settings: Settings) {
 
@@ -43,16 +44,16 @@ class Bot(val api: PokemonGo, val settings: Settings) {
     )
 
     @Synchronized
-    fun start() {        
+    fun start() {
 
         Log.normal()
-        Log.normal("Name: ${ctx.profile.username}")
-        Log.normal("Team: ${ctx.profile.team}")
+        Log.normal("Name: ${ctx.profile.playerData.username}")
+        Log.normal("Team: ${ctx.profile.playerData.team}")
         Log.normal("Pokecoin: ${ctx.profile.currencies.get(PlayerProfile.Currency.POKECOIN)}")
         Log.normal("Stardust: ${ctx.profile.currencies.get(PlayerProfile.Currency.STARDUST)}")
         Log.normal("Level ${ctx.profile.stats.level}, Experience ${ctx.profile.stats.experience}")
-        Log.normal("Pokebank ${ctx.api.inventories.pokebank.pokemons.size + ctx.api.inventories.hatchery.eggs.size}/${ctx.profile.pokemonStorage}")
-        Log.normal("Inventory ${ctx.api.inventories.itemBag.size()}/${ctx.profile.itemStorage}")
+        Log.normal("Pokebank ${ctx.api.inventories.pokebank.pokemons.size + ctx.api.inventories.hatchery.eggs.size}/${ctx.profile.playerData.maxPokemonStorage}")
+        Log.normal("Inventory ${ctx.api.inventories.itemBag.size()}/${ctx.profile.playerData.maxItemStorage}")
         //Log.normal("Inventory bag ${ctx.api.bag}")
 
         val compareName = Comparator<Pokemon> { a, b ->
@@ -82,6 +83,7 @@ class Bot(val api: PokemonGo, val settings: Settings) {
         if (settings.export.length > 0)
             task(export)
 
+        Helper.sleepSecond(2)
         task(keepalive)
         Log.normal("Getting initial pokestops...")
 
@@ -107,59 +109,87 @@ class Bot(val api: PokemonGo, val settings: Settings) {
             ctx.server.start(ctx, settings.guiPortSocket)
         }
 
-       // BotLoop 1
+        // BotLoop 1        
+        Helper.sleepSecond(Helper.getRandomNumber(3,7))
+        Log.normal("Starting BotLoop1...")
         thread(true, false, null, "BotLoop1", 1, block = {
             var threadRun = true
 
             while(threadRun) {
 
-                // keepalive
-                task(keepalive)
+                try {
+                    // keepalive
+                    task(keepalive)
 
-                // process
-                task(process)
+                    // process
+                    task(process)
+                    } catch(t: Throwable) {
+                        t.printStackTrace()
 
-                Helper.sleepSecond(Helper.getRandomNumber(4,7))
+                        // reset flag
+                        ctx.walking.getAndSet(false)
+                        ctx.stopAtPoint.getAndSet(false)
+                    } finally {
+                        Helper.sleepSecond(Helper.getRandomNumber(4,7))
+                        Log.white("Loop: BotLoop1")
+                    }
             }
         })
 
         // BotLoop 2
+        Helper.sleepSecond(Helper.getRandomNumber(3,7))
+        Log.normal("Starting BotLoop2...")
         thread(true, false, null, "BotLoop2", 1, block = {
             var threadRun = true
 
             while(threadRun) {
 
-                synctask(profile)
+                synctask(profile)                
                 synctask(hatchEggs)
-
-                if (settings.export.length > 0)
-                    task(export)
-
-                Helper.sleepSecond(Helper.getRandomNumber(50,300))
-            }
-        })
-
-        // BotLoop 3
-        thread(true, false, null, "BotLoop3", 1, block = {
-            var threadRun = true
-
-            while(threadRun) {
-                // catch pokemon
-                if (settings.shouldCatchPokemons) {
-                    synctask(catch)
-                }
-
-                // transfer pokemon
-                if (settings.shouldAutoTransfer) {                            
-                    synctask(release)
-                }
 
                 // drop items
                 if (settings.shouldDropItems) {
                     synctask(drop)
-                }                                
+                }  
 
-                Helper.sleepSecond(Helper.getRandomNumber(3,10))
+                if (settings.export.length > 0)
+                    task(export)
+
+                displayStatus()                    
+
+                Helper.sleepSecond(Helper.getRandomNumber(120,300))
+                Log.white("Loop: BotLoop22")
+            }
+        })
+
+        // BotLoop 3
+        Helper.sleepSecond(Helper.getRandomNumber(3,7))
+        Log.normal("Starting BotLoop3...")
+        thread(true, false, null, "BotLoop3", 1, block = {
+            var threadRun = true
+
+            while(threadRun) {
+                
+                try {
+                    // catch pokemon
+                    if (settings.shouldCatchPokemons) {
+                        synctask(catch)
+                    }
+
+                    // transfer pokemon
+                    if (settings.shouldAutoTransfer) {                            
+                        synctask(release)
+                    }
+                }    catch (t: Throwable) {
+
+                    t.printStackTrace()
+
+                    // reset flag
+                    ctx.releasing.getAndSet(false)                
+                } finally {
+                    Helper.sleepSecond(Helper.getRandomNumber(3,10))
+                    Log.white("Loop: BotLoop333")
+                }                      
             }
 
         })
@@ -172,22 +202,24 @@ class Bot(val api: PokemonGo, val settings: Settings) {
         synchronized(ctx) {
             synchronized(settings) {
 
-                try {            
+                try {
+                    Helper.sleepMilli((Helper.getRandomNumber(1,3) * 100).toLong())
                     task.run(this, ctx, settings)
 
-                }
-                /* 
+                }                
                 catch (lfe: LoginFailedException) {
 
                     lfe.printStackTrace()
 
-                    val (api2, auth) = login()
-
+                    /*
+                    val (api2, settings2) = login()
                     synchronized(ctx) {
                         ctx.api = api2
                     }
-                } */ 
-
+                    */
+                    // temporary, because there is no refresh_token yet for PTC
+                    System.exit(1)
+                }  
                 catch (e: Exception) {
                     e.printStackTrace()
                 }
@@ -198,19 +230,22 @@ class Bot(val api: PokemonGo, val settings: Settings) {
     @Suppress("UNUSED_VARIABLE")
     fun task(task: Task) {
         try {
+            Helper.sleepMilli((Helper.getRandomNumber(1,3) * 100).toLong())
             task.run(this, ctx, settings)
-        } 
-        /*
+        }         
         catch (lfe: LoginFailedException) {
 
             lfe.printStackTrace()
 
-            val (api2, auth) = login()
-
+            /*
+            val (api2, settings2) = login()
             synchronized(ctx) {
                 ctx.api = api2
             }
-        } */
+            */
+            // temporary, because there is no refresh_token yet for PTC
+            System.exit(1)
+        } 
         catch (e: Exception) {
             e.printStackTrace()
         }       
@@ -222,5 +257,11 @@ class Bot(val api: PokemonGo, val settings: Settings) {
 
         Log.red("Stopping bot loops...")
         Log.red("All bot loops stopped.")
+    }
+
+    fun displayStatus() {
+        Log.blue("status of ctx.releasing => {$ctx.releasing.get().toString()}")
+        Log.blue("status of ctx.stopAtPoint => {$ctx.stopAtPoint.get().toString()}")
+        Log.blue("status of ctx.walking => {$ctx.walking.get().toString()}")
     }
 }

@@ -48,7 +48,7 @@ class Bot(val api: PokemonGo, val settings: Settings) {
 
         Log.normal()
         Log.normal("Name: ${ctx.profile.playerData.username}")
-        Log.normal("Team: ${ctx.profile.playerData.team}")
+        Log.normal("Team: ${ctx.profile.playerData.team.name}")
         Log.normal("Pokecoin: ${ctx.profile.currencies.get(PlayerProfile.Currency.POKECOIN)}")
         Log.normal("Stardust: ${ctx.profile.currencies.get(PlayerProfile.Currency.STARDUST)}")
         Log.normal("Level ${ctx.profile.stats.level}, Experience ${ctx.profile.stats.experience}")

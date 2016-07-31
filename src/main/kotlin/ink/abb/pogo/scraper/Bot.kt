@@ -117,13 +117,22 @@ class Bot(val api: PokemonGo, val settings: Settings) {
 
             while(threadRun) {
 
-                // keepalive
-                task(keepalive)
+                try {
+                    // keepalive
+                    task(keepalive)
 
-                // process
-                task(process)
+                    // process
+                    task(process)
+                    } catch(t: Throwable) {
+                        t.printStackTrace()
 
-                Helper.sleepSecond(Helper.getRandomNumber(4,7))
+                        // reset flag
+                        ctx.walking.getAndSet(false)
+                        ctx.stopAtPoint.getAndSet(false)
+                    } finally {
+                        Helper.sleepSecond(Helper.getRandomNumber(4,7))
+                        Log.white("Loop: BotLoop1")
+                    }
             }
         })
 
@@ -149,6 +158,7 @@ class Bot(val api: PokemonGo, val settings: Settings) {
                 displayStatus()                    
 
                 Helper.sleepSecond(Helper.getRandomNumber(120,300))
+                Log.white("Loop: BotLoop22")
             }
         })
 
@@ -159,17 +169,27 @@ class Bot(val api: PokemonGo, val settings: Settings) {
             var threadRun = true
 
             while(threadRun) {
-                // catch pokemon
-                if (settings.shouldCatchPokemons) {
-                    synctask(catch)
-                }
+                
+                try {
+                    // catch pokemon
+                    if (settings.shouldCatchPokemons) {
+                        synctask(catch)
+                    }
 
-                // transfer pokemon
-                if (settings.shouldAutoTransfer) {                            
-                    synctask(release)
-                }                              
+                    // transfer pokemon
+                    if (settings.shouldAutoTransfer) {                            
+                        synctask(release)
+                    }
+                }    catch (t: Throwable) {
 
-                Helper.sleepSecond(Helper.getRandomNumber(3,10))
+                    t.printStackTrace()
+
+                    // reset flag
+                    ctx.releasing.getAndSet(false)                
+                } finally {
+                    Helper.sleepSecond(Helper.getRandomNumber(3,10))
+                    Log.white("Loop: BotLoop333")
+                }                      
             }
 
         })

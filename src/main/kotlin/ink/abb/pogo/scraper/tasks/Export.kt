@@ -10,23 +10,21 @@ package ink.abb.pogo.scraper.tasks
 
 import POGOProtos.Enums.PokemonIdOuterClass
 import POGOProtos.Enums.PokemonMoveOuterClass
-import com.pokegoapi.api.pokemon.Pokemon
 import com.pokegoapi.api.player.PlayerProfile
+import com.pokegoapi.api.pokemon.Pokemon
 import com.pokegoapi.api.pokemon.PokemonMetaRegistry
 import com.pokegoapi.api.pokemon.PokemonMoveMetaRegistry
 import ink.abb.pogo.scraper.Bot
 import ink.abb.pogo.scraper.Context
 import ink.abb.pogo.scraper.Settings
-import ink.abb.pogo.scraper.util.inventory.size
 import ink.abb.pogo.scraper.Task
 import ink.abb.pogo.scraper.util.Log
-import ink.abb.pogo.scraper.util.io.*
+import ink.abb.pogo.scraper.util.inventory.size
+import ink.abb.pogo.scraper.util.io.CSVWriter
 import ink.abb.pogo.scraper.util.pokemon.getIv
 import ink.abb.pogo.scraper.util.pokemon.getIvPercentage
 import java.text.SimpleDateFormat
-import java.util.ArrayList
-import java.util.Comparator
-import java.util.Date
+import java.util.*
 
 class Export : Task {
     override fun run(bot: Bot, ctx: Context, settings: Settings) {

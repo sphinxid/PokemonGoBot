@@ -44,16 +44,16 @@ class Bot(val api: PokemonGo, val settings: Settings) {
     )
 
     @Synchronized
-    fun start() {        
+    fun start() {
 
         Log.normal()
-        Log.normal("Name: ${ctx.profile.username}")
-        Log.normal("Team: ${ctx.profile.team}")
+        Log.normal("Name: ${ctx.profile.playerData.username}")
+        Log.normal("Team: ${ctx.profile.playerData.team}")
         Log.normal("Pokecoin: ${ctx.profile.currencies.get(PlayerProfile.Currency.POKECOIN)}")
         Log.normal("Stardust: ${ctx.profile.currencies.get(PlayerProfile.Currency.STARDUST)}")
         Log.normal("Level ${ctx.profile.stats.level}, Experience ${ctx.profile.stats.experience}")
-        Log.normal("Pokebank ${ctx.api.inventories.pokebank.pokemons.size + ctx.api.inventories.hatchery.eggs.size}/${ctx.profile.pokemonStorage}")
-        Log.normal("Inventory ${ctx.api.inventories.itemBag.size()}/${ctx.profile.itemStorage}")
+        Log.normal("Pokebank ${ctx.api.inventories.pokebank.pokemons.size + ctx.api.inventories.hatchery.eggs.size}/${ctx.profile.playerData.maxPokemonStorage}")
+        Log.normal("Inventory ${ctx.api.inventories.itemBag.size()}/${ctx.profile.playerData.maxItemStorage}")
         //Log.normal("Inventory bag ${ctx.api.bag}")
 
         val compareName = Comparator<Pokemon> { a, b ->
@@ -211,11 +211,14 @@ class Bot(val api: PokemonGo, val settings: Settings) {
 
                     lfe.printStackTrace()
 
+                    /*
                     val (api2, settings2) = login()
-
                     synchronized(ctx) {
                         ctx.api = api2
                     }
+                    */
+                    // temporary, because there is no refresh_token yet for PTC
+                    System.exit(1)
                 }  
                 catch (e: Exception) {
                     e.printStackTrace()
@@ -234,11 +237,14 @@ class Bot(val api: PokemonGo, val settings: Settings) {
 
             lfe.printStackTrace()
 
+            /*
             val (api2, settings2) = login()
-
             synchronized(ctx) {
                 ctx.api = api2
             }
+            */
+            // temporary, because there is no refresh_token yet for PTC
+            System.exit(1)
         } 
         catch (e: Exception) {
             e.printStackTrace()

@@ -29,6 +29,7 @@ fun getAuth(settings: Settings, http: OkHttpClient): CredentialProvider {
     val credentials = settings.credentials
     val auth = if (credentials is GoogleCredentials) {
         if (credentials.token.isBlank()) {
+
             val provider = GoogleUserCredentialProvider(http, time)
 
             println("Please go to " + GoogleUserCredentialProvider.LOGIN_URL)
@@ -168,11 +169,16 @@ fun getPokemonGoApi(settings: Settings, http: OkHttpClient): Pair<PokemonGo, Cre
 
     if (auth == null) {        
         do {
-            Log.normal("Retrying...")
-            Thread.sleep(errorTimeout)
+            try {
+                Log.normal("Retrying...")
+                Thread.sleep(errorTimeout)
 
-            auth = getAuth(settings, http)
-            countDown--            
+                auth = getAuth(settings, http)
+                countDown--            
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+
         } while (auth == null && countDown > 0)
 
         if (countDown <= 0) {

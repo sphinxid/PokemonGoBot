@@ -18,12 +18,17 @@ import ink.abb.pogo.scraper.util.Log
 import ink.abb.pogo.scraper.util.Helper
 import ink.abb.pogo.scraper.util.directions.getRouteCoordinates
 import ink.abb.pogo.scraper.util.map.canLoot
+import ink.abb.pogo.scraper.util.map.getCatchablePokemon
 import kotlin.concurrent.thread
 
 
 class Walk(val sortedPokestops: List<Pokestop>, val lootTimeouts: Map<String, Long>) : Task {
     override fun run(bot: Bot, ctx: Context, settings: Settings) {
         if (!ctx.walking.compareAndSet(false, true)) {
+            return
+        }
+
+        if (ctx.catchingPokemon.get() == true) {
             return
         }
 
@@ -98,6 +103,7 @@ class Walk(val sortedPokestops: List<Pokestop>, val lootTimeouts: Map<String, Lo
                 var randomTimeout = timeout + (Helper.getRandomNumber(0, timeout.toInt()).toLong() * 2)
                 Helper.sleepMilli(randomTimeout)
 
+                /*
                 // 10% chance to do NOTHING.
                 var dummy = Helper.getRandomNumber(0,100)
                 if (dummy <= 5) {
@@ -107,38 +113,60 @@ class Walk(val sortedPokestops: List<Pokestop>, val lootTimeouts: Map<String, Lo
 
                     Helper.sleepSecond(sleeptime)
                 }
+*/
+//                else {
 
-                else {
+                    if (!ctx.catchingPokemon.get()) {
+                        if (settings.shouldCatchPokemons && remainingSteps.toInt().mod(20) == 0) {
+                            var pokemonCounter = ctx.api.map.getCatchablePokemon(ctx.blacklistedEncounters).size
+                            var pokemonCounter2 = ctx.api.map.getCatchablePokemon().size
 
-                    ctx.lat.addAndGet(deltaLat)
-                    ctx.lng.addAndGet(deltaLng)
-
-                    if (settings.guiPortSocket > 0) {
-                        ctx.server.setLocation(ctx.lat.get(), ctx.lng.get())
+                            if (pokemonCounter > 0) {
+                                ctx.catchingPokemon.getAndSet(true)
+                            } else {
+                                ctx.catchingPokemon.getAndSet(false)
+                            }
+                            Log.white("PokemonCounter1walk = {$pokemonCounter}")
+                            Log.white("PokemonCounter2walk = {$pokemonCounter2}")
+                        }
                     }
 
-                    remainingSteps--
-                    if (remainingSteps <= 0) {
-                        Log.normal("Destination reached.")
-                        ctx.walking.set(false)
-                        threadRun = false
+                    if (ctx.catchingPokemon.get() == true) {
+                        continue;
+                    }
 
-                        if (sendDone) {
-                            if (settings.guiPortSocket > 0)
-                                ctx.server.sendGotoDone()
+                    else {
+                        ctx.lat.addAndGet(deltaLat)
+                        ctx.lng.addAndGet(deltaLng)
+
+                        if (settings.guiPortSocket > 0) {
+                            ctx.server.setLocation(ctx.lat.get(), ctx.lng.get())
                         }
 
-                        // stop at the pokestop for random seconds
-                        ctx.stopAtPoint.getAndSet(true)
-                        val randomStopTimeout = Helper.getRandomNumber(30, 600)
-                        Log.blue("We are stopping at this Pokestop for $randomStopTimeout seconds.")
-                        Helper.sleepSecond(randomStopTimeout)
+                        remainingSteps--
+                        if (remainingSteps <= 0) {
+                            Log.normal("Destination reached.")
+                            ctx.walking.set(false)
+                            threadRun = false
 
-                        ctx.stopAtPoint.getAndSet(false)
-                        Log.magenta("We are done stopping. Begin to search for our next pokestop!")
+                            if (sendDone) {
+                                if (settings.guiPortSocket > 0)
+                                    ctx.server.sendGotoDone()
+                            }
 
+                            // stop at the pokestop for random seconds
+                            if (settings.minStopAtPokestop != 0 && settings.maxPokemonAmount != 0) {
+                                ctx.stopAtPoint.getAndSet(true)
+                                val randomStopTimeout = Helper.getRandomNumber(settings.minStopAtPokestop, settings.maxStopAtPokestop)
+                                Log.blue("We are stopping at this Pokestop for $randomStopTimeout seconds.")
+                                Helper.sleepSecond(randomStopTimeout)
+
+                                ctx.stopAtPoint.getAndSet(false)
+                                Log.magenta("We are done stopping. Begin to search for our next pokestop!")
+                            }
+                        }
                     }
-                }
+                //}
             }
 
         }) // end of thread
@@ -164,6 +192,7 @@ class Walk(val sortedPokestops: List<Pokestop>, val lootTimeouts: Map<String, Lo
                     var randomTimeout = timeout + (Helper.getRandomNumber(0, timeout.toInt()).toLong() * 2)
                     Helper.sleepMilli(randomTimeout)
 
+                    /*
                     // 10% chance to do NOTHING.
                     var dummy = Helper.getRandomNumber(0,100)
                     if (dummy <= 5) {
@@ -172,58 +201,67 @@ class Walk(val sortedPokestops: List<Pokestop>, val lootTimeouts: Map<String, Lo
                         Log.yellow("I'm doing nothing .. Replicate human behavior (sleep for $sleeptime seconds.)")
 
                         Helper.sleepSecond(sleeptime)
-                    }
+                    }*/
 
-                    else {
+                    //else {
 
-                        val start = S2LatLng.fromDegrees(ctx.lat.get(), ctx.lng.get())
-                        val step = coordinatesList.first()
-                        coordinatesList.removeAt(0)
-                        val diff = step.sub(start)
-                        val distance = start.getEarthDistance(step)
-                        val timeRequired = distance / speed
-                        val stepsRequired = timeRequired / (timeout.toDouble() / 1000.toDouble())
-
-                        if (stepsRequired.equals(0)) {
-                            threadRun = false                            
+                        if (ctx.catchingPokemon.get() == true) {
+                            continue;
                         }
 
-                        val deltaLat = diff.latDegrees() / stepsRequired
-                        val deltaLng = diff.lngDegrees() / stepsRequired
-                        var remainingSteps = stepsRequired
-                        while (remainingSteps > 0) {
-                            ctx.lat.addAndGet(deltaLat)
-                            ctx.lng.addAndGet(deltaLng)
+                        else {
+                            val start = S2LatLng.fromDegrees(ctx.lat.get(), ctx.lng.get())
+                            val step = coordinatesList.first()
+                            coordinatesList.removeAt(0)
+                            val diff = step.sub(start)
+                            val distance = start.getEarthDistance(step)
+                            val timeRequired = distance / speed
+                            val stepsRequired = timeRequired / (timeout.toDouble() / 1000.toDouble())
 
-                            if (settings.guiPortSocket > 0) {
-                                ctx.server.setLocation(ctx.lat.get(), ctx.lng.get())
+                            if (stepsRequired.equals(0)) {
+                                threadRun = false
                             }
 
-                            remainingSteps--
-                            Thread.sleep(timeout)
-                        }
+                            val deltaLat = diff.latDegrees() / stepsRequired
+                            val deltaLng = diff.lngDegrees() / stepsRequired
+                            var remainingSteps = stepsRequired
 
-                        if (coordinatesList.size <= 0) {
-                            Log.normal("Destination reached.")
-                            ctx.walking.set(false)
-                            threadRun = false
-                                                        
-                            if (sendDone) {
-                                if (settings.guiPortSocket > 0)
-                                    ctx.server.sendGotoDone()
+                            while (remainingSteps > 0) {
+                                ctx.lat.addAndGet(deltaLat)
+                                ctx.lng.addAndGet(deltaLng)
+
+                                if (settings.guiPortSocket > 0) {
+                                    ctx.server.setLocation(ctx.lat.get(), ctx.lng.get())
+                                }
+
+                                remainingSteps--
+                                Thread.sleep(timeout)
                             }
-                           
-                            ctx.stopAtPoint.getAndSet(true)
 
-                            val timeStop = Helper.getRandomNumber(200,600)
-                            Log.magenta("We are going to stop at this POINT for $timeStop seconds.")
-                            Helper.sleepSecond(timeStop)
+                            if (coordinatesList.size <= 0) {
+                                Log.normal("Destination reached.")
+                                ctx.walking.set(false)
+                                threadRun = false
 
-                            ctx.stopAtPoint.getAndSet(false)
-                            Log.cyan("We are done stopping now!")                        
+                                if (sendDone) {
+                                    if (settings.guiPortSocket > 0)
+                                        ctx.server.sendGotoDone()
+                                }
+
+                                if (settings.minStopAtPokestop != 0 && settings.maxPokemonAmount != 0) {
+                                    ctx.stopAtPoint.getAndSet(true)
+
+                                    val timeStop = Helper.getRandomNumber(200, 600)
+                                    Log.magenta("We are going to stop at this POINT for $timeStop seconds.")
+                                    Helper.sleepSecond(timeStop)
+
+                                    ctx.stopAtPoint.getAndSet(false)
+                                    Log.cyan("We are done stopping now!")
+                                }
+                            }
                         }
                     }
-                }
+                //}
             }) // end of thread
         }
     }
@@ -257,50 +295,54 @@ class Walk(val sortedPokestops: List<Pokestop>, val lootTimeouts: Map<String, Lo
 
             while(threadRun) {
 
-                // default delay per steps
-                var randomTimeout = timeout + (Helper.getRandomNumber(0, timeout.toInt()).toLong() * 2)
-                Helper.sleepMilli(randomTimeout)
-
-                // 10% chance to do NOTHING.
-                var dummy = Helper.getRandomNumber(0,100)
-                if (dummy <= 5) {
-
-                    val sleeptime = Helper.getRandomNumber(1,5)
-                    Log.yellow("I'm doing nothing .. Replicate human behavior (sleep for $sleeptime seconds.)")
-
-                    Helper.sleepSecond(sleeptime)
+                if (ctx.catchingPokemon.get() == true) {
+                    continue;
                 }
 
                 else {
+                    // default delay per steps
+                    var randomTimeout = timeout + (Helper.getRandomNumber(0, timeout.toInt()).toLong() * 2)
+                    Helper.sleepMilli(randomTimeout)
 
-                    if (remainingStepsGoing > 0) {
-                        ctx.lat.addAndGet(deltaLat)
-                        ctx.lng.addAndGet(deltaLng)
+                    // 10% chance to do NOTHING.
+                    var dummy = Helper.getRandomNumber(0, 100)
+                    if (dummy <= 5) {
 
-                        if (settings.guiPortSocket > 0) {
-                            ctx.server.setLocation(ctx.lat.get(), ctx.lng.get())
+                        val sleeptime = Helper.getRandomNumber(1, 5)
+                        Log.yellow("I'm doing nothing .. Replicate human behavior (sleep for $sleeptime seconds.)")
+
+                        Helper.sleepSecond(sleeptime)
+                    } else {
+
+                        if (remainingStepsGoing > 0) {
+                            ctx.lat.addAndGet(deltaLat)
+                            ctx.lng.addAndGet(deltaLng)
+
+                            if (settings.guiPortSocket > 0) {
+                                ctx.server.setLocation(ctx.lat.get(), ctx.lng.get())
+                            }
+
+                            remainingStepsGoing--
+                        } else if (remainingStepsGoing <= 0) {
+                            ctx.lat.addAndGet(deltaLat2)
+                            ctx.lng.addAndGet(deltaLng2)
+
+                            if (settings.guiPortSocket > 0) {
+                                ctx.server.setLocation(ctx.lat.get(), ctx.lng.get())
+                            }
+
+                            remainingStepsComing--
                         }
 
-                        remainingStepsGoing--
-                    } else if (remainingStepsGoing <= 0) {
-                        ctx.lat.addAndGet(deltaLat2)
-                        ctx.lng.addAndGet(deltaLng2)
+                        if (remainingStepsComing <= 0) {
+                            Log.normal("Destination reached.")
+                            ctx.walking.set(false)
+                            threadRun = false
 
-                        if (settings.guiPortSocket > 0) {
-                            ctx.server.setLocation(ctx.lat.get(), ctx.lng.get())
-                        }
-
-                        remainingStepsComing--
-                    }
-
-                    if (remainingStepsComing <= 0) {
-                        Log.normal("Destination reached.")
-                        ctx.walking.set(false)
-                        threadRun = false
-
-                        if (sendDone) {
-                            if (settings.guiPortSocket > 0)
-                                ctx.server.sendGotoDone()
+                            if (sendDone) {
+                                if (settings.guiPortSocket > 0)
+                                    ctx.server.sendGotoDone()
+                            }
                         }
                     }
                 }

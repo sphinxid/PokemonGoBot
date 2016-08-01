@@ -21,6 +21,9 @@ desired_catch_probability_unwanted=0.0
 # the next pokestop from (1/infinite)
 random_next_pokestop_selection=5
 
+min_stop_pokestop=30
+max_stop_pokestop=60
+
 ## Walking
 # Meters per second
 speed=2.8

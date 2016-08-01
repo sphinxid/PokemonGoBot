@@ -33,5 +33,6 @@ data class Context(
 
         // sphinxid
 		var releasing: AtomicBoolean = AtomicBoolean(false),
-		var stopAtPoint: AtomicBoolean = AtomicBoolean(false)
+		var stopAtPoint: AtomicBoolean = AtomicBoolean(false),
+		var catchingPokemon: AtomicBoolean = AtomicBoolean(false)
 )

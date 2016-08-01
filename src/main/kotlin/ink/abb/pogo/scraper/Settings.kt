@@ -96,7 +96,10 @@ class SettingsParser(val properties: Properties) {
             export = getPropertyIfSet("Export on Profile Update", "export", defaults.export, String::toString),
 
             guiPort = getPropertyIfSet("Port where the webserver should listen", "gui_port", defaults.guiPort, String::toInt),
-            guiPortSocket = getPropertyIfSet("Port where the socketserver should listen", "gui_port_socket", defaults.guiPortSocket, String::toInt)
+            guiPortSocket = getPropertyIfSet("Port where the socketserver should listen", "gui_port_socket", defaults.guiPortSocket, String::toInt),
+
+            minStopAtPokestop = getPropertyIfSet("Number of min seconds to stop at the Pokestop", "min_stop_pokestop", defaults.minStopAtPokestop, String::toInt),
+            maxStopAtPokestop = getPropertyIfSet("Number of max seconds to stop at the Pokestop", "max_stop_pokestop", defaults.maxStopAtPokestop, String::toInt)
         )
     }
 
@@ -199,7 +202,9 @@ data class Settings(
     val export: String = "",
 
     val guiPort: Int = 8000,
-    val guiPortSocket: Int = 8001
+    val guiPortSocket: Int = 8001,
+    val minStopAtPokestop: Int = 30,
+    val maxStopAtPokestop: Int = 60
 ) {
 
     fun writeProperty(propertyFile: String, key: String, value: Any) {

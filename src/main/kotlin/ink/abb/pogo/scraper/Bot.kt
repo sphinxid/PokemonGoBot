@@ -28,6 +28,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.concurrent.thread
 import com.pokegoapi.exceptions.LoginFailedException
+import ink.abb.pogo.scraper.util.map.getCatchablePokemon
 
 class Bot(val api: PokemonGo, val settings: Settings) {
 
@@ -123,12 +124,28 @@ class Bot(val api: PokemonGo, val settings: Settings) {
 
                     // process
                     task(process)
+
+                    if (settings.shouldCatchPokemons) {
+                        var pokemonCounter = ctx.api.map.getCatchablePokemon(ctx.blacklistedEncounters).size
+                        var pokemonCounter2 = ctx.api.map.getCatchablePokemon().size
+
+                        if (pokemonCounter > 0) {
+                            ctx.catchingPokemon.getAndSet(true)
+                        }
+                        else {
+                            ctx.catchingPokemon.getAndSet(false)
+                        }
+                        Log.white("PokemonCounter1 = {$pokemonCounter}")
+                        Log.white("PokemonCounter2 = {$pokemonCounter2}")
+                    }
+
                     } catch(t: Throwable) {
                         t.printStackTrace()
 
                         // reset flag
                         ctx.walking.getAndSet(false)
                         ctx.stopAtPoint.getAndSet(false)
+                        ctx.catchingPokemon.getAndSet(false)
                     } finally {
                         Helper.sleepSecond(Helper.getRandomNumber(4,7))
                         Log.white("Loop: BotLoop1")

@@ -46,8 +46,8 @@ class CatchOneNearbyPokemon : Task {
             val encounterResult = catchablePokemon.encounterPokemon()
             if (encounterResult.wasSuccessful()) {
                 Log.green("Encountered pokemon ${catchablePokemon.pokemonId} " +
-                        "with CP ${encounterResult.wildPokemon.pokemonData.cp} and IV ${encounterResult.wildPokemon.pokemonData.getIvPercentage()}%")
-                val (shouldRelease, reason) = encounterResult.wildPokemon.pokemonData.shouldTransfer(settings)
+                        "with CP ${encounterResult.pokemonData.cp} and IV ${encounterResult.pokemonData.getIvPercentage()}%")
+                val (shouldRelease, reason) = encounterResult.pokemonData.shouldTransfer(settings)
                 val desiredCatchProbability = if (shouldRelease) {
                     Log.yellow("Using desired_catch_probability_unwanted because $reason")
                     settings.desiredCatchProbabilityUnwanted
@@ -76,10 +76,10 @@ class CatchOneNearbyPokemon : Task {
 
                 if (result.status == CatchPokemonResponse.CatchStatus.CATCH_SUCCESS) {
                     ctx.pokemonStats.first.andIncrement
-                    val iv = (encounterResult.wildPokemon.pokemonData.individualAttack + encounterResult.wildPokemon.pokemonData.individualDefense + encounterResult.wildPokemon.pokemonData.individualStamina) * 100 / 45
+                    val iv = (encounterResult.pokemonData.individualAttack + encounterResult.pokemonData.individualDefense + encounterResult.pokemonData.individualStamina) * 100 / 45
                     var message = "Caught a ${catchablePokemon.pokemonId} " +
-                            "with CP ${encounterResult.wildPokemon.pokemonData.cp} and IV $iv%"
-                    message += "\r\n ${encounterResult.wildPokemon.pokemonData.getStatsFormatted()}"
+                            "with CP ${encounterResult.pokemonData.cp} and IV $iv%"
+                    message += "\r\n ${encounterResult.pokemonData.getStatsFormatted()}"
                     if (settings.shouldDisplayPokemonCatchRewards)
                         message += ": [${result.xpList.sum()}x XP, ${result.candyList.sum()}x " +
                                 "Candy, ${result.stardustList.sum()}x Stardust]"
@@ -87,7 +87,7 @@ class CatchOneNearbyPokemon : Task {
 
 
                     if (settings.guiPortSocket > 0) {
-                        ctx.server.newPokemon(catchablePokemon.latitude, catchablePokemon.longitude, encounterResult.wildPokemon.pokemonData)
+                        ctx.server.newPokemon(catchablePokemon.latitude, catchablePokemon.longitude, encounterResult.pokemonData)
                         ctx.server.sendProfile()
                     }
                 } else {
